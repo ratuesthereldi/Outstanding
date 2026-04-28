@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales Pivot — Tereos FKS</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --border: #e0ddd6;
+    --border2: #ccc9c0;
+    --text: #1a1a18;
+    --text2: #6b6860;
+    --text3: #9e9b94;
+    --accent: #1a3a2a;
+    --accent2: #2d5c42;
+    --backlog-bg: #fde8e8;
+    --backlog-text: #991b1b;
+    --ok-bg: #e8f5ed;
+    --ok-text: #166534;
+    --header-bg: #1a3a2a;
+    --header-text: #e8f0eb;
+    --row-alt: #faf9f6;
+    --blue: #1d4ed8;
+  }
+
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* HEADER */
+  .topbar {
+    background: var(--accent);
+    color: var(--header-text);
+    padding: 0 24px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 2px solid #0f2419;
+  }
+  .topbar-logo { font-size: 15px; font-weight: 600; letter-spacing: 0.04em; }
+  .topbar-sep { width: 1px; height: 20px; background: rgba(255,255,255,0.2); }
+  .topbar-title { font-size: 13px; color: rgba(255,255,255,0.65); font-weight: 300; }
+  .topbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .btn-export {
+    background: rgba(255,255,255,0.12);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.25);
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.15s;
+  }
+  .btn-export:hover { background: rgba(255,255,255,0.2); }
+
+  /* UPLOAD ZONE */
+  .upload-zone {
+    margin: 32px auto;
+    max-width: 600px;
+    border: 2px dashed var(--border2);
+    border-radius: 8px;
+    padding: 48px 32px;
+    text-align: center;
+    background: var(--surface);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent2); background: #f0f6f2; }
+  .upload-zone input { display: none; }
+  .upload-icon { font-size: 32px; margin-bottom: 12px; }
+  .upload-title { font-size: 16px; font-weight: 500; margin-bottom: 6px; }
+  .upload-sub { font-size: 13px; color: var(--text2); }
+  .upload-sub span { color: var(--accent2); font-weight: 500; cursor: pointer; }
+
+  /* CONTROLS */
+  .controls {
+    padding: 12px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .controls label { font-size: 12px; color: var(--text2); font-weight: 500; margin-right: 4px; }
+  .controls select, .controls input {
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+  }
+  .controls select:focus, .controls input:focus { border-color: var(--accent2); }
+  .pill-group { display: flex; gap: 4px; flex-wrap: wrap; }
+  .pill {
+    padding: 4px 10px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 500;
+    border: 1px solid var(--border2);
+    background: var(--surface);
+    cursor: pointer;
+    transition: all 0.12s;
+    color: var(--text2);
+  }
+  .pill.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  /* STATS BAR */
+  .statsbar {
+    padding: 10px 24px;
+    display: flex;
+    gap: 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .stat { display: flex; flex-direction: column; gap: 1px; }
+  .stat-label { font-size: 10px; color: var(--text3); font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
+  .stat-val { font-size: 18px; font-weight: 600; font-family: 'IBM Plex Mono', monospace; }
+  .stat-val.red { color: #991b1b; }
+  .stat-val.green { color: #166534; }
+
+  /* TABLE */
+  .table-wrap {
+    overflow: auto;
+    max-height: calc(100vh - 200px);
+    background: var(--surface);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    min-width: 900px;
+  }
+  thead th {
+    background: var(--header-bg);
+    color: var(--header-text);
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    white-space: nowrap;
+    border-right: 1px solid rgba(255,255,255,0.08);
+    cursor: pointer;
+    user-select: none;
+  }
+  thead th:hover { background: var(--accent2); }
+  thead th .sort-arrow { margin-left: 4px; opacity: 0.5; font-size: 10px; }
+  thead th.sorted .sort-arrow { opacity: 1; }
+
+  tbody tr { border-bottom: 1px solid var(--border); }
+  tbody tr:nth-child(even) { background: var(--row-alt); }
+  tbody tr:hover { background: #eef3ef; }
+  tbody td {
+    padding: 7px 12px;
+    white-space: nowrap;
+    color: var(--text);
+    border-right: 1px solid var(--border);
+    font-size: 12.5px;
+  }
+  tbody td:last-child { border-right: none; }
+
+  .status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .backlog { background: var(--backlog-bg); color: var(--backlog-text); }
+  .ok { background: var(--ok-bg); color: var(--ok-text); }
+
+  .num-cell { font-family: 'IBM Plex Mono', monospace; text-align: right; }
+
+  /* TOTAL ROW */
+  tfoot td {
+    background: #e8f0eb;
+    font-weight: 600;
+    padding: 8px 12px;
+    position: sticky;
+    bottom: 0;
+    font-size: 12.5px;
+    border-top: 2px solid var(--accent2);
+    font-family: 'IBM Plex Mono', monospace;
+    text-align: right;
+  }
+  tfoot td:first-child { text-align: left; font-family: 'IBM Plex Sans', sans-serif; color: var(--accent); }
+
+  /* EMPTY STATE */
+  .empty { text-align: center; padding: 48px; color: var(--text3); }
+
+  /* GROUP HEADER */
+  .group-row td {
+    background: #eef3ef;
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--accent);
+    padding: 5px 12px;
+    border-bottom: 1px solid var(--border2);
+  }
+
+  .hidden { display: none; }
+
+  .container { max-width: 100%; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="topbar-logo">Tereos FKS</span>
+  <span class="topbar-sep"></span>
+  <span class="topbar-title">Sales Data Forecast — Pivot Table</span>
+  <div class="topbar-right">
+    <button class="btn-export" onclick="exportExcel()" id="exportBtn" style="display:none">↓ Export Excel</button>
+  </div>
+</div>
+
+<div id="uploadSection">
+  <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" onchange="handleFile(this.files[0])">
+    <div class="upload-icon">📂</div>
+    <div class="upload-title">Upload file dari Power BI</div>
+    <div class="upload-sub">Drag & drop atau <span onclick="event.stopPropagation(); document.getElementById('fileInput').click()">pilih file</span></div>
+    <div class="upload-sub" style="margin-top:8px; font-size:11px;">Mendukung .csv, .xlsx, .xls</div>
+  </div>
+
+  <!-- DEMO DATA BUTTON -->
+  <div style="text-align:center; margin-top: -16px;">
+    <button onclick="loadDemo()" style="background:none;border:none;color:var(--accent2);font-size:13px;cursor:pointer;text-decoration:underline;font-family:'IBM Plex Sans',sans-serif;">
+      Atau coba dengan demo data
+    </button>
+  </div>
+</div>
+
+<div id="appSection" class="hidden">
+  <div class="controls">
+    <div>
+      <label>Group by</label>
+      <select id="groupBy" onchange="render()">
+        <option value="">— None —</option>
+      </select>
+    </div>
+    <div>
+      <label>Filter Sales</label>
+      <select id="filterSales" onchange="render()"><option value="">All</option></select>
+    </div>
+    <div>
+      <label>Filter Status</label>
+      <div class="pill-group" id="statusFilter">
+        <span class="pill active" data-val="" onclick="setStatus(this)">All</span>
+        <span class="pill" data-val="BACKLOG" onclick="setStatus(this)">Backlog</span>
+        <span class="pill" data-val="OK" onclick="setStatus(this)">OK</span>
+      </div>
+    </div>
+    <div style="margin-left:auto;">
+      <label>Search</label>
+      <input type="text" id="searchBox" placeholder="Cari customer, contract..." oninput="render()" style="width:180px;">
+    </div>
+  </div>
+
+  <div class="statsbar" id="statsBar"></div>
+
+  <div class="table-wrap">
+    <table id="pivotTable">
+      <thead id="tableHead"></thead>
+      <tbody id="tableBody"></tbody>
+      <tfoot id="tableFoot"></tfoot>
+    </table>
+  </div>
+</div>
+
+<script>
+let allData = [];
+let columns = [];
+let sortCol = null;
+let sortDir = 1;
+let statusFilter = '';
+
+// Drag & drop
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag');
+  handleFile(e.dataTransfer.files[0]);
+});
+
+function handleFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(e.target.result, { type: 'binary' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    loadData(json);
+  };
+  reader.readAsBinaryString(file);
+}
+
+function loadDemo() {
+  const demo = [
+    {Type:'USD','Customer Name':'PT ALAM MANIS INDONESIA','SC Number':'016/SC/HFCS/III/2025','Sales Name':'EMILIA','Unit Price':0.41,'EXW IDR Price':'','EXW USD Price':410,'Sum of SC (mt)':700,'Sum of BALANCE CONTRACT':350,'Sum of SO':'','Sum of SC+SO':350,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':350},
+    {Type:'USD','Customer Name':'PT DIAMOND COLD STORAGE','SC Number':'051/SC/HFCS/VIII/2025','Sales Name':'RINA','Unit Price':0.4,'EXW IDR Price':'','EXW USD Price':390,'Sum of SC (mt)':200,'Sum of BALANCE CONTRACT':25,'Sum of SO':'','Sum of SC+SO':25,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':25},
+    {Type:'USD','Customer Name':'PT MAYORA INDAH Tbk','SC Number':'047/SC/HFCS/VII/2025','Sales Name':'MARIO','Unit Price':0.39,'EXW IDR Price':'','EXW USD Price':381.512065,'Sum of SC (mt)':450,'Sum of BALANCE CONTRACT':175,'Sum of SO':'','Sum of SC+SO':175,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':175},
+    {Type:'USD','Customer Name':'WINGS GROUP','SC Number':'0961/SC/HFCS/V/2025','Sales Name':'MARIO','Unit Price':0.349,'EXW IDR Price':'','EXW USD Price':349,'Sum of SC (mt)':10000,'Sum of BALANCE CONTRACT':6668,'Sum of SO':'','Sum of SC+SO':6668,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':6668},
+    {Type:'IDR','Customer Name':'PT ALAM MANIS INDONESIA','SC Number':'1037/SC/HFCS/VI/2025','Sales Name':'EMILIA','Unit Price':6669,'EXW IDR Price':6669,'EXW USD Price':410,'Sum of SC (mt)':350,'Sum of BALANCE CONTRACT':100,'Sum of SO':0,'Sum of SC+SO':100,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':100},
+    {Type:'IDR','Customer Name':'PT ALAM PERKASA LESTARI','SC Number':'1273/SC/HFCS/VII/2025','Sales Name':'MARIO','Unit Price':5685,'EXW IDR Price':5685,'EXW USD Price':349,'Sum of SC (mt)':276,'Sum of BALANCE CONTRACT':69,'Sum of SO':'-','Sum of SC+SO':69,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':69},
+    {Type:'IDR','Customer Name':'PT DIAN MAS PRATAMA','SC Number':'1527/SC/HFCS/VIII/2025','Sales Name':'CHRIS G','Unit Price':7050,'EXW IDR Price':6910,'EXW USD Price':425,'Sum of SC (mt)':100,'Sum of BALANCE CONTRACT':17,'Sum of SO':0,'Sum of SC+SO':17,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':17},
+    {Type:'IDR','Customer Name':'PT DJOJONEGORO C-1000','SC Number':'0252/SC/HFCS/IV/2026','Sales Name':'RINA','Unit Price':8150000,'EXW IDR Price':7978,'EXW USD Price':464,'Sum of SC (mt)':200,'Sum of BALANCE CONTRACT':200,'Sum of SO':'','Sum of SC+SO':200,'Variance':'-','Backlog':'OK','Backlog Qty':''},
+    {Type:'IDR','Customer Name':'PT KARUNIA ALAM SEGAR','SC Number':'1696/SC/HFCS/IX/2025','Sales Name':'MARIO','Unit Price':5796,'EXW IDR Price':5796,'EXW USD Price':349,'Sum of SC (mt)':1020,'Sum of BALANCE CONTRACT':210,'Sum of SO':60,'Sum of SC+SO':270,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':270},
+    {Type:'IDR','Customer Name':'PT KARUNIA INDAH SEGAR','SC Number':'1758/SC/HFCS/IX/2025','Sales Name':'MARIO','Unit Price':5798,'EXW IDR Price':5798,'EXW USD Price':349,'Sum of SC (mt)':141,'Sum of BALANCE CONTRACT':94,'Sum of SO':0,'Sum of SC+SO':94,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':94},
+    {Type:'IDR','Customer Name':'PT SORINI AGRO ASIA CORPORINDO TBK','SC Number':'3351/SC/HFCS/XI/2024','Sales Name':'MARIO','Unit Price':7015,'EXW IDR Price':6615,'EXW USD Price':415,'Sum of SC (mt)':250,'Sum of BALANCE CONTRACT':10,'Sum of SO':0,'Sum of SC+SO':10,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':10},
+    {Type:'IDR','Customer Name':'PT SWEETINDO PERKASA','SC Number':'1516/SC/HFCS/VIII/2025','Sales Name':'CHRIS G','Unit Price':6350,'EXW IDR Price':6210,'EXW USD Price':381,'Sum of SC (mt)':600,'Sum of BALANCE CONTRACT':320,'Sum of SO':'-','Sum of SC+SO':320,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':320},
+    {Type:'IDR','Customer Name':'PT TIRTA ALAM SEGAR','SC Number':'1267A/SC/HFCS/VII/2025','Sales Name':'MARIO','Unit Price':5847,'EXW IDR Price':5679,'EXW USD Price':349,'Sum of SC (mt)':300,'Sum of BALANCE CONTRACT':300,'Sum of SO':'','Sum of SC+SO':300,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':300},
+    {Type:'IDR','Customer Name':'PT UNILEVER INDONESIA TBK','SC Number':'1566/SC/HFCS/VIII/2025','Sales Name':'RINA','Unit Price':7210,'EXW IDR Price':7047,'EXW USD Price':435,'Sum of SC (mt)':68,'Sum of BALANCE CONTRACT':60,'Sum of SO':'','Sum of SC+SO':60,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':60},
+    {Type:'IDR 2','Customer Name':'PT GLICO WINGS','SC Number':'1789/SC/HFCS/X/2025','Sales Name':'MARIO','Unit Price':5951,'EXW IDR Price':5788,'EXW USD Price':349,'Sum of SC (mt)':'','Sum of BALANCE CONTRACT':'','Sum of SO':8,'Sum of SC+SO':8,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':8},
+    {Type:'IDR 2','Customer Name':'PT GOLDEN SINAR SAKTI','SC Number':'1674/SC/HFCS/IX/2025','Sales Name':'RINA','Unit Price':6200,'EXW IDR Price':6037,'EXW USD Price':366,'Sum of SC (mt)':'','Sum of BALANCE CONTRACT':'','Sum of SO':2150,'Sum of SC+SO':2150,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':2150},
+    {Type:'IDR 2','Customer Name':'PT PERMATA FOOD INDONESIA','SC Number':'2024/SC/HFCS/XII/2025','Sales Name':'RINA','Unit Price':7500,'EXW IDR Price':7332,'EXW USD Price':436.6885051,'Sum of SC (mt)':'','Sum of BALANCE CONTRACT':'','Sum of SO':25,'Sum of SC+SO':25,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':25},
+    {Type:'IDR 2','Customer Name':'PT TIRTA ALAM SEGAR','SC Number':'1069/SC/HFCS/VI/2025','Sales Name':'MARIO','Unit Price':5845,'EXW IDR Price':5682,'EXW USD Price':348.9957619,'Sum of SC (mt)':'','Sum of BALANCE CONTRACT':'','Sum of SO':150,'Sum of SC+SO':150,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':150},
+  ];
+  loadData(demo);
+}
+
+function loadData(data) {
+  allData = data;
+  columns = Object.keys(data[0] || {});
+  
+  // Populate group by
+  const groupBy = document.getElementById('groupBy');
+  groupBy.innerHTML = '<option value="">— None —</option>';
+  ['Type','Sales Name','Backlog'].forEach(c => {
+    if (columns.includes(c)) {
+      const o = document.createElement('option');
+      o.value = c; o.textContent = c;
+      groupBy.appendChild(o);
+    }
+  });
+
+  // Populate sales filter
+  const sales = [...new Set(data.map(r => r['Sales Name']).filter(Boolean))].sort();
+  const filterSales = document.getElementById('filterSales');
+  filterSales.innerHTML = '<option value="">All Sales</option>';
+  sales.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s; o.textContent = s;
+    filterSales.appendChild(o);
+  });
+
+  document.getElementById('uploadSection').classList.add('hidden');
+  document.getElementById('appSection').classList.remove('hidden');
+  document.getElementById('exportBtn').style.display = '';
+  render();
+}
+
+function setStatus(el) {
+  document.querySelectorAll('#statusFilter .pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  statusFilter = el.dataset.val;
+  render();
+}
+
+function getFiltered() {
+  const search = document.getElementById('searchBox').value.toLowerCase();
+  const salesF = document.getElementById('filterSales').value;
+  return allData.filter(row => {
+    if (salesF && row['Sales Name'] !== salesF) return false;
+    if (statusFilter && row['Backlog'] !== statusFilter) return false;
+    if (search) {
+      return Object.values(row).some(v => String(v).toLowerCase().includes(search));
+    }
+    return true;
+  });
+}
+
+function isNum(v) { return v !== '' && v !== '-' && !isNaN(Number(v)) && v !== null; }
+
+const numCols = ['Unit Price','EXW IDR Price','EXW USD Price','Sum of SC (mt)','Sum of BALANCE CONTRACT','Sum of SO','Sum of SC+SO','Backlog Qty'];
+
+function render() {
+  let data = getFiltered();
+  if (sortCol) {
+    data = [...data].sort((a,b) => {
+      const av = a[sortCol], bv = b[sortCol];
+      if (isNum(av) && isNum(bv)) return (Number(av) - Number(bv)) * sortDir;
+      return String(av).localeCompare(String(bv)) * sortDir;
+    });
+  }
+
+  const groupBy = document.getElementById('groupBy').value;
+  const showCols = columns;
+
+  // HEAD
+  const head = document.getElementById('tableHead');
+  head.innerHTML = `<tr>${showCols.map(c => `<th onclick="doSort('${c}')" class="${sortCol===c?'sorted':''}">
+    ${c}<span class="sort-arrow">${sortCol===c?(sortDir===1?'▲':'▼'):'⇅'}</span>
+  </th>`).join('')}</tr>`;
+
+  // BODY
+  const tbody = document.getElementById('tableBody');
+  let html = '';
+  
+  if (groupBy) {
+    const groups = {};
+    data.forEach(row => {
+      const k = row[groupBy] || '(blank)';
+      if (!groups[k]) groups[k] = [];
+      groups[k].push(row);
+    });
+    Object.entries(groups).forEach(([g, rows]) => {
+      html += `<tr class="group-row"><td colspan="${showCols.length}">${groupBy}: ${g} <span style="font-weight:400;color:var(--text2)">(${rows.length} rows)</span></td></tr>`;
+      rows.forEach(row => { html += renderRow(row, showCols); });
+    });
+  } else {
+    data.forEach(row => { html += renderRow(row, showCols); });
+  }
+  tbody.innerHTML = html || `<tr><td colspan="${showCols.length}" class="empty">Tidak ada data</td></tr>`;
+
+  // FOOT totals
+  const foot = document.getElementById('tableFoot');
+  const totals = showCols.map(c => {
+    if (c === showCols[0]) return `<td>TOTAL (${data.length} rows)</td>`;
+    const vals = data.map(r => r[c]).filter(isNum);
+    if (vals.length) return `<td>${vals.reduce((a,b)=>a+Number(b),0).toLocaleString('id-ID', {maximumFractionDigits:2})}</td>`;
+    return `<td></td>`;
+  });
+  foot.innerHTML = `<tr>${totals.join('')}</tr>`;
+
+  // STATS
+  const backlog = data.filter(r => r['Backlog'] === 'BACKLOG');
+  const ok = data.filter(r => r['Backlog'] === 'OK');
+  const totalQty = data.map(r=>r['Backlog Qty']).filter(isNum).reduce((a,b)=>a+Number(b),0);
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat"><span class="stat-label">Total Rows</span><span class="stat-val">${data.length}</span></div>
+    <div class="stat"><span class="stat-label">Backlog</span><span class="stat-val red">${backlog.length}</span></div>
+    <div class="stat"><span class="stat-label">OK</span><span class="stat-val green">${ok.length}</span></div>
+    <div class="stat"><span class="stat-label">Total Backlog Qty</span><span class="stat-val">${totalQty.toLocaleString('id-ID')}</span></div>
+  `;
+}
+
+function renderRow(row, cols) {
+  return `<tr>${cols.map(c => {
+    const v = row[c];
+    if (c === 'Backlog') {
+      const cls = v === 'BACKLOG' ? 'backlog' : v === 'OK' ? 'ok' : '';
+      return `<td><span class="status-badge ${cls}">${v || '-'}</span></td>`;
+    }
+    if (numCols.includes(c) && isNum(v)) {
+      return `<td class="num-cell">${Number(v).toLocaleString('id-ID', {maximumFractionDigits:4})}</td>`;
+    }
+    return `<td>${v === '' || v === null || v === undefined ? '-' : v}</td>`;
+  }).join('')}</tr>`;
+}
+
+function doSort(col) {
+  if (sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = 1; }
+  render();
+}
+
+function exportExcel() {
+  const data = getFiltered();
+  const ws = XLSX.utils.json_to_sheet(data);
+  
+  // Style header row
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let C = range.s.c; C <= range.e.c; C++) {
+    const addr = XLSX.utils.encode_cell({r:0, c:C});
+    if (!ws[addr]) continue;
+    ws[addr].s = {
+      fill: { fgColor: { rgb: '1A3A2A' } },
+      font: { bold: true, color: { rgb: 'E8F0EB' } }
+    };
+  }
+
+  // Color backlog/ok rows
+  const backlogCol = columns.indexOf('Backlog');
+  if (backlogCol >= 0) {
+    data.forEach((row, i) => {
+      const val = row['Backlog'];
+      const color = val === 'BACKLOG' ? 'FDE8E8' : val === 'OK' ? 'E8F5ED' : null;
+      if (color) {
+        for (let C = range.s.c; C <= range.e.c; C++) {
+          const addr = XLSX.utils.encode_cell({r: i+1, c: C});
+          if (!ws[addr]) ws[addr] = {v:''};
+          ws[addr].s = { fill: { fgColor: { rgb: color } } };
+        }
+      }
+    });
+  }
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Pivot');
+  XLSX.writeFile(wb, 'sales_pivot_' + new Date().toISOString().slice(0,10) + '.xlsx');
+}
+</script>
+</body>
+</html>
