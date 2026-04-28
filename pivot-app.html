@@ -3,315 +3,450 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sales Pivot — Tereos FKS</title>
+<title>Tereos FKS — Sales Data Forecast</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap');
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
-  :root {
-    --bg: #f5f4f0;
-    --surface: #ffffff;
-    --border: #e0ddd6;
-    --border2: #ccc9c0;
-    --text: #1a1a18;
-    --text2: #6b6860;
-    --text3: #9e9b94;
-    --accent: #1a3a2a;
-    --accent2: #2d5c42;
-    --backlog-bg: #fde8e8;
-    --backlog-text: #991b1b;
-    --ok-bg: #e8f5ed;
-    --ok-text: #166534;
-    --header-bg: #1a3a2a;
-    --header-text: #e8f0eb;
-    --row-alt: #faf9f6;
-    --blue: #1d4ed8;
-  }
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #1c2128;
+  --surface3: #22272e;
+  --border: #30363d;
+  --border2: #444c56;
+  --text: #e6edf3;
+  --text2: #8b949e;
+  --text3: #484f58;
+  --accent: #3fb950;
+  --accent2: #2ea043;
+  --accent-dim: rgba(63,185,80,0.12);
+  --red: #f85149;
+  --red-dim: rgba(248,81,73,0.12);
+  --blue: #58a6ff;
+  --blue-dim: rgba(88,166,255,0.12);
+  --amber: #d29922;
+  --amber-dim: rgba(210,153,34,0.12);
+  --backlog-bg: #3d1a1a;
+  --backlog-text: #ff7b72;
+  --ok-bg: #1a3d2b;
+  --ok-text: #56d364;
+  --header-bg: #1f2937;
+  --mono: 'DM Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+  --display: 'Syne', sans-serif;
+}
 
-  body {
-    font-family: 'IBM Plex Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    font-size: 14px;
-  }
+body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 13px; }
 
-  /* HEADER */
-  .topbar {
-    background: var(--accent);
-    color: var(--header-text);
-    padding: 0 24px;
-    height: 52px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    border-bottom: 2px solid #0f2419;
-  }
-  .topbar-logo { font-size: 15px; font-weight: 600; letter-spacing: 0.04em; }
-  .topbar-sep { width: 1px; height: 20px; background: rgba(255,255,255,0.2); }
-  .topbar-title { font-size: 13px; color: rgba(255,255,255,0.65); font-weight: 300; }
-  .topbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-  .btn-export {
-    background: rgba(255,255,255,0.12);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.25);
-    padding: 6px 14px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-family: 'IBM Plex Sans', sans-serif;
-    cursor: pointer;
-    font-weight: 500;
-    transition: background 0.15s;
-  }
-  .btn-export:hover { background: rgba(255,255,255,0.2); }
+/* ── TOPBAR ── */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo { font-family: var(--display); font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
+.logo span { color: var(--accent); }
+.topbar-sep { width: 1px; height: 18px; background: var(--border); }
+.topbar-sub { font-size: 12px; color: var(--text2); font-weight: 300; }
+.topbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 
-  /* UPLOAD ZONE */
-  .upload-zone {
-    margin: 32px auto;
-    max-width: 600px;
-    border: 2px dashed var(--border2);
-    border-radius: 8px;
-    padding: 48px 32px;
-    text-align: center;
-    background: var(--surface);
-    cursor: pointer;
-    transition: border-color 0.2s, background 0.2s;
-  }
-  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent2); background: #f0f6f2; }
-  .upload-zone input { display: none; }
-  .upload-icon { font-size: 32px; margin-bottom: 12px; }
-  .upload-title { font-size: 16px; font-weight: 500; margin-bottom: 6px; }
-  .upload-sub { font-size: 13px; color: var(--text2); }
-  .upload-sub span { color: var(--accent2); font-weight: 500; cursor: pointer; }
+/* ── PAGE TABS ── */
+.page-tabs {
+  display: flex;
+  gap: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+}
+.page-tab {
+  padding: 10px 18px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text2);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--display);
+  letter-spacing: 0.02em;
+}
+.page-tab:hover { color: var(--text); }
+.page-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-badge {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-radius: 99px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-family: var(--mono);
+}
 
-  /* CONTROLS */
-  .controls {
-    padding: 12px 24px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-  .controls label { font-size: 12px; color: var(--text2); font-weight: 500; margin-right: 4px; }
-  .controls select, .controls input {
-    border: 1px solid var(--border2);
-    border-radius: 4px;
-    padding: 5px 10px;
-    font-size: 12px;
-    font-family: 'IBM Plex Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    outline: none;
-  }
-  .controls select:focus, .controls input:focus { border-color: var(--accent2); }
-  .pill-group { display: flex; gap: 4px; flex-wrap: wrap; }
-  .pill {
-    padding: 4px 10px;
-    border-radius: 99px;
-    font-size: 11px;
-    font-weight: 500;
-    border: 1px solid var(--border2);
-    background: var(--surface);
-    cursor: pointer;
-    transition: all 0.12s;
-    color: var(--text2);
-  }
-  .pill.active { background: var(--accent); color: white; border-color: var(--accent); }
+/* ── UPLOAD ── */
+#uploadSection { padding: 40px 20px; }
+.upload-card {
+  max-width: 560px;
+  margin: 0 auto;
+  background: var(--surface);
+  border: 1px dashed var(--border2);
+  border-radius: 12px;
+  padding: 48px 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.upload-card:hover, .upload-card.drag { border-color: var(--accent); background: var(--accent-dim); }
+.upload-card input { display: none; }
+.upload-icon { font-size: 36px; margin-bottom: 14px; }
+.upload-title { font-family: var(--display); font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+.upload-sub { font-size: 13px; color: var(--text2); line-height: 1.5; }
+.upload-sub a { color: var(--accent); cursor: pointer; }
+.demo-btn {
+  margin-top: 20px;
+  background: none;
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: var(--sans);
+  transition: all 0.15s;
+}
+.demo-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-  /* STATS BAR */
-  .statsbar {
-    padding: 10px 24px;
-    display: flex;
-    gap: 24px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-  }
-  .stat { display: flex; flex-direction: column; gap: 1px; }
-  .stat-label { font-size: 10px; color: var(--text3); font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
-  .stat-val { font-size: 18px; font-weight: 600; font-family: 'IBM Plex Mono', monospace; }
-  .stat-val.red { color: #991b1b; }
-  .stat-val.green { color: #166534; }
+/* ── FILTERS ── */
+.filters-bar {
+  padding: 12px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.filter-group { display: flex; align-items: center; gap: 6px; }
+.filter-label { font-size: 11px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+select, input[type=text] {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-family: var(--sans);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+select:focus, input[type=text]:focus { border-color: var(--accent); }
+select { cursor: pointer; }
 
-  /* TABLE */
-  .table-wrap {
-    overflow: auto;
-    max-height: calc(100vh - 200px);
-    background: var(--surface);
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12.5px;
-    min-width: 900px;
-  }
-  thead th {
-    background: var(--header-bg);
-    color: var(--header-text);
-    padding: 8px 12px;
-    text-align: left;
-    font-weight: 500;
-    font-size: 11px;
-    letter-spacing: 0.04em;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    white-space: nowrap;
-    border-right: 1px solid rgba(255,255,255,0.08);
-    cursor: pointer;
-    user-select: none;
-  }
-  thead th:hover { background: var(--accent2); }
-  thead th .sort-arrow { margin-left: 4px; opacity: 0.5; font-size: 10px; }
-  thead th.sorted .sort-arrow { opacity: 1; }
+/* ── PIVOT TABS ── */
+.pivot-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 12px 20px 0;
+  background: var(--bg);
+}
+.pivot-tab {
+  padding: 7px 14px;
+  border-radius: 6px 6px 0 0;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text2);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  transition: all 0.15s;
+  font-family: var(--display);
+}
+.pivot-tab.active { background: var(--surface); color: var(--text); border-color: var(--border2); }
+.pivot-tab:hover:not(.active) { color: var(--text); }
 
-  tbody tr { border-bottom: 1px solid var(--border); }
-  tbody tr:nth-child(even) { background: var(--row-alt); }
-  tbody tr:hover { background: #eef3ef; }
-  tbody td {
-    padding: 7px 12px;
-    white-space: nowrap;
-    color: var(--text);
-    border-right: 1px solid var(--border);
-    font-size: 12.5px;
-  }
-  tbody td:last-child { border-right: none; }
+/* ── STATS ── */
+.stats-row {
+  display: flex;
+  gap: 1px;
+  background: var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.stat-cell {
+  flex: 1;
+  background: var(--surface2);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.stat-label { font-size: 10px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; }
+.stat-val { font-size: 20px; font-weight: 600; font-family: var(--mono); }
+.stat-val.green { color: var(--accent); }
+.stat-val.red { color: var(--red); }
+.stat-val.blue { color: var(--blue); }
+.stat-val.amber { color: var(--amber); }
 
-  .status-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 99px;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-  }
-  .backlog { background: var(--backlog-bg); color: var(--backlog-text); }
-  .ok { background: var(--ok-bg); color: var(--ok-text); }
+/* ── TABLE ── */
+.table-wrap {
+  overflow: auto;
+  max-height: calc(100vh - 260px);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+table { width: 100%; border-collapse: collapse; min-width: 800px; }
 
-  .num-cell { font-family: 'IBM Plex Mono', monospace; text-align: right; }
+thead th {
+  background: #1f2937;
+  color: #94a3b8;
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  white-space: nowrap;
+  border-right: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  font-family: var(--display);
+}
+thead th:hover { background: #263347; color: var(--text); }
+thead th.sorted { color: var(--accent); }
+.sort-icon { margin-left: 4px; opacity: 0.5; font-size: 9px; }
+thead th.sorted .sort-icon { opacity: 1; }
 
-  /* TOTAL ROW */
-  tfoot td {
-    background: #e8f0eb;
-    font-weight: 600;
-    padding: 8px 12px;
-    position: sticky;
-    bottom: 0;
-    font-size: 12.5px;
-    border-top: 2px solid var(--accent2);
-    font-family: 'IBM Plex Mono', monospace;
-    text-align: right;
-  }
-  tfoot td:first-child { text-align: left; font-family: 'IBM Plex Sans', sans-serif; color: var(--accent); }
+/* month header */
+thead th.month-col {
+  background: #1a2535;
+  text-align: right;
+  font-size: 9px;
+  padding: 8px 8px;
+  min-width: 60px;
+}
+thead th.month-col.recent { background: #1f2d1f; color: #6ee7b7; }
 
-  /* EMPTY STATE */
-  .empty { text-align: center; padding: 48px; color: var(--text3); }
+tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+tbody tr:hover { background: rgba(255,255,255,0.03); }
+tbody td {
+  padding: 7px 12px;
+  white-space: nowrap;
+  color: var(--text);
+  border-right: 1px solid rgba(255,255,255,0.04);
+  font-size: 12.5px;
+}
+.num { font-family: var(--mono); text-align: right; font-size: 12px; color: #a8c8e8; }
+.num.zero { color: var(--text3); }
+.num.high { color: var(--accent); font-weight: 500; }
 
-  /* GROUP HEADER */
-  .group-row td {
-    background: #eef3ef;
-    font-weight: 600;
-    font-size: 12px;
-    color: var(--accent);
-    padding: 5px 12px;
-    border-bottom: 1px solid var(--border2);
-  }
+/* status badges */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  font-family: var(--mono);
+}
+.badge-backlog { background: var(--backlog-bg); color: var(--backlog-text); }
+.badge-ok { background: var(--ok-bg); color: var(--ok-text); }
+.badge-completed { background: var(--blue-dim); color: var(--blue); }
+.badge-cancelled { background: var(--amber-dim); color: var(--amber); }
 
-  .hidden { display: none; }
+/* grand total row */
+tfoot tr { position: sticky; bottom: 0; }
+tfoot td {
+  background: #1f2d1f;
+  padding: 8px 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  text-align: right;
+  border-top: 2px solid var(--accent2);
+  border-right: 1px solid rgba(255,255,255,0.06);
+}
+tfoot td:first-child { text-align: left; font-family: var(--display); font-size: 11px; letter-spacing: 0.04em; }
+tfoot td.avg-cell { color: var(--amber); }
 
-  .container { max-width: 100%; }
+/* AVG row */
+.avg-row td {
+  background: #1f2820 !important;
+  color: var(--amber) !important;
+  font-family: var(--mono) !important;
+  font-size: 11px !important;
+  text-align: right;
+  border-top: 1px dashed var(--border2);
+  padding: 5px 12px !important;
+}
+.avg-row td:first-child { color: var(--text2) !important; text-align: left; font-size: 10px !important; letter-spacing: 0.06em; }
+
+/* BUTTONS */
+.btn {
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: var(--sans);
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-primary { background: var(--accent2); color: white; }
+.btn-primary:hover { background: var(--accent); }
+.btn-outline { background: transparent; border: 1px solid var(--border2); color: var(--text2); }
+.btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+.hidden { display: none !important; }
+
+/* EMPTY */
+.empty-state { padding: 60px; text-align: center; color: var(--text3); font-size: 13px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
 </style>
 </head>
 <body>
 
 <div class="topbar">
-  <span class="topbar-logo">Tereos FKS</span>
-  <span class="topbar-sep"></span>
-  <span class="topbar-title">Sales Data Forecast — Pivot Table</span>
+  <div class="logo">Tereos <span>FKS</span></div>
+  <div class="topbar-sep"></div>
+  <div class="topbar-sub">Sales Data Forecast</div>
   <div class="topbar-right">
-    <button class="btn-export" onclick="exportExcel()" id="exportBtn" style="display:none">↓ Export Excel</button>
+    <button class="btn btn-outline" id="exportBtn1" onclick="exportPivot1()" style="display:none">↓ Export Pivot 1</button>
+    <button class="btn btn-primary" id="exportBtn2" onclick="exportPivot2()" style="display:none">↓ Export Pivot 2 (Monthly)</button>
   </div>
 </div>
 
+<div class="page-tabs">
+  <div class="page-tab active" onclick="switchPage('usd')">
+    💵 USD <span class="tab-badge">Page 1</span>
+  </div>
+  <div class="page-tab" onclick="switchPage('idr')">
+    🇮🇩 IDR <span class="tab-badge">Page 2</span>
+  </div>
+</div>
+
+<!-- UPLOAD -->
 <div id="uploadSection">
-  <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+  <div class="upload-card" id="dropZone" onclick="document.getElementById('fileInput').click()">
     <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" onchange="handleFile(this.files[0])">
     <div class="upload-icon">📂</div>
-    <div class="upload-title">Upload file dari Power BI</div>
-    <div class="upload-sub">Drag & drop atau <span onclick="event.stopPropagation(); document.getElementById('fileInput').click()">pilih file</span></div>
-    <div class="upload-sub" style="margin-top:8px; font-size:11px;">Mendukung .csv, .xlsx, .xls</div>
+    <div class="upload-title">Upload File dari Power BI</div>
+    <div class="upload-sub">Export CSV atau Excel dari Power BI, lalu drop di sini<br><a onclick="event.stopPropagation()">atau klik untuk pilih file</a></div>
   </div>
-
-  <!-- DEMO DATA BUTTON -->
-  <div style="text-align:center; margin-top: -16px;">
-    <button onclick="loadDemo()" style="background:none;border:none;color:var(--accent2);font-size:13px;cursor:pointer;text-decoration:underline;font-family:'IBM Plex Sans',sans-serif;">
-      Atau coba dengan demo data
-    </button>
+  <div style="text-align:center;margin-top:16px;">
+    <button class="demo-btn" onclick="loadDemo()">▶ Coba dengan demo data (USD)</button>
   </div>
 </div>
 
+<!-- APP -->
 <div id="appSection" class="hidden">
-  <div class="controls">
-    <div>
-      <label>Group by</label>
-      <select id="groupBy" onchange="render()">
-        <option value="">— None —</option>
-      </select>
+
+  <div class="filters-bar" id="filtersBar">
+    <div class="filter-group">
+      <span class="filter-label">Status</span>
+      <select id="fStatus" onchange="render()"><option value="">All</option></select>
     </div>
-    <div>
-      <label>Filter Sales</label>
-      <select id="filterSales" onchange="render()"><option value="">All</option></select>
+    <div class="filter-group">
+      <span class="filter-label">Product</span>
+      <select id="fProduct" onchange="render()"><option value="">All</option></select>
     </div>
-    <div>
-      <label>Filter Status</label>
-      <div class="pill-group" id="statusFilter">
-        <span class="pill active" data-val="" onclick="setStatus(this)">All</span>
-        <span class="pill" data-val="BACKLOG" onclick="setStatus(this)">Backlog</span>
-        <span class="pill" data-val="OK" onclick="setStatus(this)">OK</span>
-      </div>
+    <div class="filter-group">
+      <span class="filter-label">Sales</span>
+      <select id="fSales" onchange="render()"><option value="">All</option></select>
     </div>
-    <div style="margin-left:auto;">
-      <label>Search</label>
-      <input type="text" id="searchBox" placeholder="Cari customer, contract..." oninput="render()" style="width:180px;">
+    <div class="filter-group">
+      <span class="filter-label">Cust. Group</span>
+      <select id="fGroup" onchange="render()"><option value="">All</option></select>
+    </div>
+    <div class="filter-group" style="margin-left:auto">
+      <input type="text" id="searchBox" placeholder="🔍 Search..." oninput="render()" style="width:180px">
     </div>
   </div>
 
-  <div class="statsbar" id="statsBar"></div>
+  <div class="pivot-tabs">
+    <div class="pivot-tab active" id="ptab1" onclick="switchPivot(1)">Pivot 1 — Summary</div>
+    <div class="pivot-tab" id="ptab2" onclick="switchPivot(2)">Pivot 2 — Qty per Month</div>
+  </div>
 
-  <div class="table-wrap">
-    <table id="pivotTable">
-      <thead id="tableHead"></thead>
-      <tbody id="tableBody"></tbody>
-      <tfoot id="tableFoot"></tfoot>
+  <div class="stats-row" id="statsRow"></div>
+
+  <div class="table-wrap" id="tableWrap">
+    <table id="mainTable">
+      <thead id="tHead"></thead>
+      <tbody id="tBody"></tbody>
+      <tfoot id="tFoot"></tfoot>
     </table>
   </div>
 </div>
 
 <script>
 let allData = [];
-let columns = [];
-let sortCol = null;
-let sortDir = 1;
-let statusFilter = '';
+let currentPage = 'usd';
+let currentPivot = 1;
+let sortCol = null, sortDir = 1;
 
-// Drag & drop
+// ── COLUMN MAPS ──
+// These column names match what Power BI exports.
+// Users can adjust if their export columns differ.
+const COL = {
+  customer:    ['Contract[6. CUSTOMER NAME]', 'Customer Name', 'CUSTOMER NAME'],
+  contractNum: ['Contract[1. Contract number]', 'Main Contract Number', 'Contract Number', 'SC NUMBER', 'Contract number'],
+  sales:       ['Contract[8. Sales Name]', 'Sales Name', 'SALES NAME'],
+  unitPrice:   ['Contract[15. Unit Price]', 'Unit Price ($/KG)', 'UNIT PRICE', 'Unit Price'],
+  exw:         ['Contract[17. EXW (USD/MT)1]', 'EXW ($/MT)', 'EXW USD PRICE', 'EXW USD Price'],
+  exwIdr:      ['Contract[16. EXW (IDR/KG)', 'EXW (IDR/KG)', 'EXW IDR PRICE', 'EXW IDR Price'],
+  scQty:       ['SC Qty', 'Contract Qty (mt)', 'Sum of SC (mt)', 'Contract Qty'],
+  volFix:      ['Vol Fixations', 'Volume Fixations (mt)', 'Sum of BALANCE CONTRACT'],
+  outstanding: ['Outstanding', 'Outstanding Contract (mt)', 'Sum of SC+SO'],
+  soCreated:   ['SO Created (mt)', 'Sum of SO'],
+  status:      ['Contract[30. STATUS CONTRACT]', 'Status', 'STATUS CONTRACT', 'Backlog'],
+  product:     ['Contract[10. Product]', 'Product', 'PRODUCT'],
+  custGroup:   ['Customer Group', 'Contract[6. Customer Group]'],
+  dpMonth:     ['Contract[32. DP Month]', 'DP Month'],
+  type:        ['Type', 'Contract[12. Contract type]', 'Contract type'],
+};
+
+function pick(row, keys) {
+  for (const k of keys) if (row[k] !== undefined && row[k] !== '') return row[k];
+  return '';
+}
+
+// ── DRAG & DROP ──
 const dropZone = document.getElementById('dropZone');
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault(); dropZone.classList.remove('drag');
-  handleFile(e.dataTransfer.files[0]);
-});
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag'); handleFile(e.dataTransfer.files[0]); });
 
 function handleFile(file) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
     const wb = XLSX.read(e.target.result, { type: 'binary' });
-    const ws = wb.Sheets[wb.SheetNames[0]];
+    // Try to find USD sheet
+    const sheetName = wb.SheetNames.find(s => /usd/i.test(s)) || wb.SheetNames[0];
+    const ws = wb.Sheets[sheetName];
     const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
     loadData(json);
   };
@@ -319,157 +454,264 @@ function handleFile(file) {
 }
 
 function loadDemo() {
+  // Demo data based on screenshots
+  const months = ['Jan-25','Feb-25','Mar-25','Apr-25','May-25','Jun-25','Jul-25','Aug-25','Sep-25','Oct-25','Nov-25','Dec-25','Jan-26','Feb-26','Mar-26'];
   const demo = [
-    {Type:'USD','Customer Name':'PT ALAM MANIS INDONESIA','SC Number':'016/SC/HFCS/III/2025','Sales Name':'EMILIA','Unit Price':0.41,'EXW IDR Price':'','EXW USD Price':410,'Sum of SC (mt)':700,'Sum of BALANCE CONTRACT':350,'Sum of SO':'','Sum of SC+SO':350,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':350},
-    {Type:'USD','Customer Name':'PT DIAMOND COLD STORAGE','SC Number':'051/SC/HFCS/VIII/2025','Sales Name':'RINA','Unit Price':0.4,'EXW IDR Price':'','EXW USD Price':390,'Sum of SC (mt)':200,'Sum of BALANCE CONTRACT':25,'Sum of SO':'','Sum of SC+SO':25,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':25},
-    {Type:'USD','Customer Name':'PT MAYORA INDAH Tbk','SC Number':'047/SC/HFCS/VII/2025','Sales Name':'MARIO','Unit Price':0.39,'EXW IDR Price':'','EXW USD Price':381.512065,'Sum of SC (mt)':450,'Sum of BALANCE CONTRACT':175,'Sum of SO':'','Sum of SC+SO':175,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':175},
-    {Type:'USD','Customer Name':'WINGS GROUP','SC Number':'0961/SC/HFCS/V/2025','Sales Name':'MARIO','Unit Price':0.349,'EXW IDR Price':'','EXW USD Price':349,'Sum of SC (mt)':10000,'Sum of BALANCE CONTRACT':6668,'Sum of SO':'','Sum of SC+SO':6668,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':6668},
-    {Type:'IDR','Customer Name':'PT ALAM MANIS INDONESIA','SC Number':'1037/SC/HFCS/VI/2025','Sales Name':'EMILIA','Unit Price':6669,'EXW IDR Price':6669,'EXW USD Price':410,'Sum of SC (mt)':350,'Sum of BALANCE CONTRACT':100,'Sum of SO':0,'Sum of SC+SO':100,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':100},
-    {Type:'IDR','Customer Name':'PT ALAM PERKASA LESTARI','SC Number':'1273/SC/HFCS/VII/2025','Sales Name':'MARIO','Unit Price':5685,'EXW IDR Price':5685,'EXW USD Price':349,'Sum of SC (mt)':276,'Sum of BALANCE CONTRACT':69,'Sum of SO':'-','Sum of SC+SO':69,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':69},
-    {Type:'IDR','Customer Name':'PT DIAN MAS PRATAMA','SC Number':'1527/SC/HFCS/VIII/2025','Sales Name':'CHRIS G','Unit Price':7050,'EXW IDR Price':6910,'EXW USD Price':425,'Sum of SC (mt)':100,'Sum of BALANCE CONTRACT':17,'Sum of SO':0,'Sum of SC+SO':17,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':17},
-    {Type:'IDR','Customer Name':'PT DJOJONEGORO C-1000','SC Number':'0252/SC/HFCS/IV/2026','Sales Name':'RINA','Unit Price':8150000,'EXW IDR Price':7978,'EXW USD Price':464,'Sum of SC (mt)':200,'Sum of BALANCE CONTRACT':200,'Sum of SO':'','Sum of SC+SO':200,'Variance':'-','Backlog':'OK','Backlog Qty':''},
-    {Type:'IDR','Customer Name':'PT KARUNIA ALAM SEGAR','SC Number':'1696/SC/HFCS/IX/2025','Sales Name':'MARIO','Unit Price':5796,'EXW IDR Price':5796,'EXW USD Price':349,'Sum of SC (mt)':1020,'Sum of BALANCE CONTRACT':210,'Sum of SO':60,'Sum of SC+SO':270,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':270},
-    {Type:'IDR','Customer Name':'PT KARUNIA INDAH SEGAR','SC Number':'1758/SC/HFCS/IX/2025','Sales Name':'MARIO','Unit Price':5798,'EXW IDR Price':5798,'EXW USD Price':349,'Sum of SC (mt)':141,'Sum of BALANCE CONTRACT':94,'Sum of SO':0,'Sum of SC+SO':94,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':94},
-    {Type:'IDR','Customer Name':'PT SORINI AGRO ASIA CORPORINDO TBK','SC Number':'3351/SC/HFCS/XI/2024','Sales Name':'MARIO','Unit Price':7015,'EXW IDR Price':6615,'EXW USD Price':415,'Sum of SC (mt)':250,'Sum of BALANCE CONTRACT':10,'Sum of SO':0,'Sum of SC+SO':10,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':10},
-    {Type:'IDR','Customer Name':'PT SWEETINDO PERKASA','SC Number':'1516/SC/HFCS/VIII/2025','Sales Name':'CHRIS G','Unit Price':6350,'EXW IDR Price':6210,'EXW USD Price':381,'Sum of SC (mt)':600,'Sum of BALANCE CONTRACT':320,'Sum of SO':'-','Sum of SC+SO':320,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':320},
-    {Type:'IDR','Customer Name':'PT TIRTA ALAM SEGAR','SC Number':'1267A/SC/HFCS/VII/2025','Sales Name':'MARIO','Unit Price':5847,'EXW IDR Price':5679,'EXW USD Price':349,'Sum of SC (mt)':300,'Sum of BALANCE CONTRACT':300,'Sum of SO':'','Sum of SC+SO':300,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':300},
-    {Type:'IDR','Customer Name':'PT UNILEVER INDONESIA TBK','SC Number':'1566/SC/HFCS/VIII/2025','Sales Name':'RINA','Unit Price':7210,'EXW IDR Price':7047,'EXW USD Price':435,'Sum of SC (mt)':68,'Sum of BALANCE CONTRACT':60,'Sum of SO':'','Sum of SC+SO':60,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':60},
-    {Type:'IDR 2','Customer Name':'PT GLICO WINGS','SC Number':'1789/SC/HFCS/X/2025','Sales Name':'MARIO','Unit Price':5951,'EXW IDR Price':5788,'EXW USD Price':349,'Sum of SC (mt)':'','Sum of BALANCE CONTRACT':'','Sum of SO':8,'Sum of SC+SO':8,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':8},
-    {Type:'IDR 2','Customer Name':'PT GOLDEN SINAR SAKTI','SC Number':'1674/SC/HFCS/IX/2025','Sales Name':'RINA','Unit Price':6200,'EXW IDR Price':6037,'EXW USD Price':366,'Sum of SC (mt)':'','Sum of BALANCE CONTRACT':'','Sum of SO':2150,'Sum of SC+SO':2150,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':2150},
-    {Type:'IDR 2','Customer Name':'PT PERMATA FOOD INDONESIA','SC Number':'2024/SC/HFCS/XII/2025','Sales Name':'RINA','Unit Price':7500,'EXW IDR Price':7332,'EXW USD Price':436.6885051,'Sum of SC (mt)':'','Sum of BALANCE CONTRACT':'','Sum of SO':25,'Sum of SC+SO':25,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':25},
-    {Type:'IDR 2','Customer Name':'PT TIRTA ALAM SEGAR','SC Number':'1069/SC/HFCS/VI/2025','Sales Name':'MARIO','Unit Price':5845,'EXW IDR Price':5682,'EXW USD Price':348.9957619,'Sum of SC (mt)':'','Sum of BALANCE CONTRACT':'','Sum of SO':150,'Sum of SC+SO':150,'Variance':'-','Backlog':'BACKLOG','Backlog Qty':150},
+    { customer:'CV IKA RAYA SENTAUSA', contractNum:'011/SC/GC/II/2026', sales:'EMILIA', unitPrice:0.55, exw:514.34, scQty:66, volFix:44, outstanding:22, status:'Completed', product:'GLUCOSE', custGroup:'SENTAUSA', monthQtys: {'Jan-26':22,'Feb-26':22,'Mar-26':22} },
+    { customer:'PT ALAM MANIS INDONESIA', contractNum:'124/SC/GC/VIII/2024', sales:'EMILIA', unitPrice:0.432, exw:432, scQty:550, volFix:100, outstanding:450, status:'Active', product:'GLUCOSE', custGroup:'ALAM MANIS', monthQtys: {'Feb-25':183,'Mar-25':183,'Apr-25':183} },
+    { customer:'PT AROMA KOPIKRIM INDONESIA', contractNum:'029/SC/GC/IV/2025', sales:'EMILIA', unitPrice:0.42, exw:396.23, scQty:4000, volFix:1740, outstanding:2260, status:'Active', product:'GLUCOSE', custGroup:'AROMA GROUP', monthQtys: {'Aug-25':667,'Sep-25':667,'Oct-25':667,'Nov-25':667,'Dec-25':667,'Jan-26':667} },
+    { customer:'PT DIAMOND COLD STORAGE', contractNum:'013/SC/GC/II/2026', sales:'RINA', unitPrice:0.49, exw:479.97, scQty:150, volFix:50, outstanding:100, status:'Active', product:'GLUCOSE', custGroup:'DIAMOND GROUP', monthQtys: {'Jan-26':50,'Feb-26':50,'Mar-26':50} },
+    { customer:'PT FONUSA AGUNG MULIA', contractNum:'059/SC/GC/VIII/2025', sales:'RINA', unitPrice:0.483, exw:475.68, scQty:2745, volFix:400, outstanding:2345, status:'Active', product:'GLUCOSE', custGroup:'FONUSA GROUP', monthQtys: {'Sep-25':305,'Oct-25':305,'Nov-25':305,'Dec-25':305,'Jan-26':305,'Feb-26':305,'Mar-26':305,'Apr-26':305,'May-26':305} },
+    { customer:'PT KALDU SARI NABATI INDONESIA', contractNum:'006/SC/GC/I/2026', sales:'RINA', unitPrice:0.59, exw:565.0, scQty:200, volFix:100, outstanding:200, status:'Active', product:'GLUCOSE', custGroup:'KALDU GROUP', monthQtys: {'Nov-25':100,'Dec-25':100} },
+    { customer:'PT KALDU SARI NABATI INDONESIA', contractNum:'045/SC/GC/VII/2025', sales:'MARIO', unitPrice:0.48, exw:464.74, scQty:250, volFix:49, outstanding:201, status:'Active', product:'GLUCOSE', custGroup:'KALDU GROUP', monthQtys: {'Feb-25':90,'Aug-25':80,'Sep-25':80} },
+    { customer:'PT KALDU SARI NABATI INDONESIA', contractNum:'055/SC/GC/VIII/2025', sales:'RINA', unitPrice:0.477, exw:462.4, scQty:250, volFix:0, outstanding:250, status:'Active', product:'GLUCOSE', custGroup:'KALDU GROUP', monthQtys: {'Nov-25':80,'Dec-25':90,'Jan-26':80} },
+    { customer:'PT KALDU SARI NABATI INDONESIA', contractNum:'057/SC/GC/VIII/2025', sales:'RINA', unitPrice:0.555, exw:529.98, scQty:375, volFix:136, outstanding:239, status:'Active', product:'GLUCOSE', custGroup:'KALDU GROUP', monthQtys: {'Sep-25':87,'Oct-25':96,'Nov-25':96,'Dec-25':96} },
+    { customer:'PT KALDU SARI NABATI INDONESIA', contractNum:'076/SC/GC/XII/2025', sales:'RINA', unitPrice:0.53, exw:514.99, scQty:100, volFix:75, outstanding:25, status:'Active', product:'GLUCOSE', custGroup:'KALDU GROUP', monthQtys: {'Oct-25':100} },
+    { customer:'PT KALDU SARI NABATI INDONESIA', contractNum:'077/SC/GC/XII/2025', sales:'RINA', unitPrice:0.575, exw:550.0, scQty:150, volFix:144, outstanding:6, status:'Active', product:'GLUCOSE', custGroup:'KALDU GROUP', monthQtys: {'Nov-25':150} },
+    { customer:'PT KIEVIT INDONESIA', contractNum:'002/SC/GC/I/2026', sales:'RINA', unitPrice:0.485, exw:459.97, scQty:500, volFix:90, outstanding:410, status:'Active', product:'GLUCOSE', custGroup:'KIEVIT GROUP', monthQtys: {'Jan-26':50,'Feb-26':50,'Mar-26':50,'Apr-26':50,'May-26':50,'Jun-26':50,'Jul-26':50,'Aug-26':50,'Sep-26':100} },
+    { customer:'PT LAUTAN NATURAL KRIMERINDO', contractNum:'036/SC/GC/VI/2025', sales:'EMILIA', unitPrice:0.41, exw:385.43, scQty:3000, volFix:2550, outstanding:450, status:'Active', product:'GLUCOSE', custGroup:'LAUTAN GROUP', monthQtys: {'Aug-25':500,'Sep-25':500,'Oct-25':500,'Nov-25':500,'Dec-25':500,'Jan-26':500} },
+    { customer:'WINGS GROUP', contractNum:'026/SC/GC/IV/2025', sales:'RINA', unitPrice:0.372, exw:372, scQty:9960, volFix:0, outstanding:7040, status:'Active', product:'GLUCOSE', custGroup:'WINGS GROUP', monthQtys: {'Jun-25':2429,'Jul-25':2429,'Aug-25':2429,'Sep-25':2429} },
+    { customer:'WINGS GROUP', contractNum:'053/SC/GC/VIII/2025', sales:'RINA', unitPrice:0.379, exw:379, scQty:8730, volFix:0, outstanding:3270, status:'Active', product:'GLUCOSE', custGroup:'WINGS GROUP', monthQtys: {'Sep-25':1000,'Oct-25':1000,'Nov-25':1000,'Dec-25':270} },
   ];
-  loadData(demo);
+
+  // Flatten to row format
+  const allMonths = ['Jan-25','Feb-25','Mar-25','Apr-25','May-25','Jun-25','Jul-25','Aug-25','Sep-25','Oct-25','Nov-25','Dec-25','Jan-26','Feb-26','Mar-26','Apr-26','May-26','Jun-26','Jul-26','Aug-26','Sep-26'];
+  const flat = demo.map(d => {
+    const row = {
+      'Contract[6. CUSTOMER NAME]': d.customer,
+      'Contract[1. Contract number]': d.contractNum,
+      'Contract[8. Sales Name]': d.sales,
+      'Contract[15. Unit Price]': d.unitPrice,
+      'Contract[17. EXW (USD/MT)1]': d.exw,
+      'SC Qty': d.scQty,
+      'Vol Fixations': d.volFix,
+      'Outstanding': d.outstanding,
+      'Contract[30. STATUS CONTRACT]': d.status,
+      'Contract[10. Product]': d.product,
+      'Customer Group': d.custGroup,
+    };
+    allMonths.forEach(m => { row[m] = d.monthQtys[m] || 0; });
+    return row;
+  });
+
+  window._monthCols = allMonths;
+  loadData(flat);
 }
 
 function loadData(data) {
   allData = data;
-  columns = Object.keys(data[0] || {});
-  
-  // Populate group by
-  const groupBy = document.getElementById('groupBy');
-  groupBy.innerHTML = '<option value="">— None —</option>';
-  ['Type','Sales Name','Backlog'].forEach(c => {
-    if (columns.includes(c)) {
-      const o = document.createElement('option');
-      o.value = c; o.textContent = c;
-      groupBy.appendChild(o);
-    }
-  });
 
-  // Populate sales filter
-  const sales = [...new Set(data.map(r => r['Sales Name']).filter(Boolean))].sort();
-  const filterSales = document.getElementById('filterSales');
-  filterSales.innerHTML = '<option value="">All Sales</option>';
-  sales.forEach(s => {
-    const o = document.createElement('option');
-    o.value = s; o.textContent = s;
-    filterSales.appendChild(o);
-  });
+  // Detect month columns: columns that look like "Mon-YY"
+  const cols = Object.keys(data[0] || {});
+  if (!window._monthCols) {
+    window._monthCols = cols.filter(c => /^[A-Z][a-z]{2}-\d{2}$/.test(c));
+  }
+
+  // Populate filters
+  populateFilter('fStatus', data.map(r => pick(r, COL.status)));
+  populateFilter('fProduct', data.map(r => pick(r, COL.product)));
+  populateFilter('fSales', data.map(r => pick(r, COL.sales)));
+  populateFilter('fGroup', data.map(r => pick(r, COL.custGroup)));
 
   document.getElementById('uploadSection').classList.add('hidden');
   document.getElementById('appSection').classList.remove('hidden');
-  document.getElementById('exportBtn').style.display = '';
+  document.getElementById('exportBtn1').style.display = '';
+  document.getElementById('exportBtn2').style.display = '';
   render();
 }
 
-function setStatus(el) {
-  document.querySelectorAll('#statusFilter .pill').forEach(p => p.classList.remove('active'));
-  el.classList.add('active');
-  statusFilter = el.dataset.val;
-  render();
+function populateFilter(id, vals) {
+  const el = document.getElementById(id);
+  const unique = [...new Set(vals.filter(Boolean))].sort();
+  el.innerHTML = '<option value="">All</option>' + unique.map(v => `<option>${v}</option>`).join('');
 }
 
 function getFiltered() {
-  const search = document.getElementById('searchBox').value.toLowerCase();
-  const salesF = document.getElementById('filterSales').value;
+  const s = v => document.getElementById(v).value;
+  const search = s('searchBox').toLowerCase();
   return allData.filter(row => {
-    if (salesF && row['Sales Name'] !== salesF) return false;
-    if (statusFilter && row['Backlog'] !== statusFilter) return false;
-    if (search) {
-      return Object.values(row).some(v => String(v).toLowerCase().includes(search));
-    }
+    if (s('fStatus') && pick(row, COL.status) !== s('fStatus')) return false;
+    if (s('fProduct') && pick(row, COL.product) !== s('fProduct')) return false;
+    if (s('fSales') && pick(row, COL.sales) !== s('fSales')) return false;
+    if (s('fGroup') && pick(row, COL.custGroup) !== s('fGroup')) return false;
+    if (search) return Object.values(row).some(v => String(v).toLowerCase().includes(search));
     return true;
   });
 }
 
-function isNum(v) { return v !== '' && v !== '-' && !isNaN(Number(v)) && v !== null; }
+function num(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function fmt(v, dec=2) {
+  const n = parseFloat(v);
+  if (isNaN(n) || n === 0) return '-';
+  return n.toLocaleString('id-ID', { minimumFractionDigits: dec > 2 ? 0 : 0, maximumFractionDigits: dec });
+}
+function fmtPrice(v) {
+  const n = parseFloat(v);
+  if (isNaN(n) || n === 0) return '-';
+  return n.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+}
 
-const numCols = ['Unit Price','EXW IDR Price','EXW USD Price','Sum of SC (mt)','Sum of BALANCE CONTRACT','Sum of SO','Sum of SC+SO','Backlog Qty'];
+let _sortedData = [];
 
 function render() {
   let data = getFiltered();
-  if (sortCol) {
-    data = [...data].sort((a,b) => {
-      const av = a[sortCol], bv = b[sortCol];
-      if (isNum(av) && isNum(bv)) return (Number(av) - Number(bv)) * sortDir;
+  if (sortCol !== null) {
+    data = [...data].sort((a, b) => {
+      const av = a[sortCol] ?? '', bv = b[sortCol] ?? '';
+      const an = parseFloat(av), bn = parseFloat(bv);
+      if (!isNaN(an) && !isNaN(bn)) return (an - bn) * sortDir;
       return String(av).localeCompare(String(bv)) * sortDir;
     });
   }
+  _sortedData = data;
 
-  const groupBy = document.getElementById('groupBy').value;
-  const showCols = columns;
+  renderStats(data);
+  if (currentPivot === 1) renderPivot1(data);
+  else renderPivot2(data);
+}
 
-  // HEAD
-  const head = document.getElementById('tableHead');
-  head.innerHTML = `<tr>${showCols.map(c => `<th onclick="doSort('${c}')" class="${sortCol===c?'sorted':''}">
-    ${c}<span class="sort-arrow">${sortCol===c?(sortDir===1?'▲':'▼'):'⇅'}</span>
-  </th>`).join('')}</tr>`;
+function renderStats(data) {
+  const months = window._monthCols || [];
+  const totalSC = data.reduce((s, r) => s + num(pick(r, COL.scQty)), 0);
+  const totalVol = data.reduce((s, r) => s + num(pick(r, COL.volFix)), 0);
+  const totalOut = data.reduce((s, r) => s + num(pick(r, COL.outstanding)), 0);
+  const avgPrice = data.length ? data.reduce((s,r)=>s+num(pick(r,COL.unitPrice)),0)/data.length : 0;
 
-  // BODY
-  const tbody = document.getElementById('tableBody');
-  let html = '';
-  
-  if (groupBy) {
-    const groups = {};
-    data.forEach(row => {
-      const k = row[groupBy] || '(blank)';
-      if (!groups[k]) groups[k] = [];
-      groups[k].push(row);
-    });
-    Object.entries(groups).forEach(([g, rows]) => {
-      html += `<tr class="group-row"><td colspan="${showCols.length}">${groupBy}: ${g} <span style="font-weight:400;color:var(--text2)">(${rows.length} rows)</span></td></tr>`;
-      rows.forEach(row => { html += renderRow(row, showCols); });
-    });
-  } else {
-    data.forEach(row => { html += renderRow(row, showCols); });
-  }
-  tbody.innerHTML = html || `<tr><td colspan="${showCols.length}" class="empty">Tidak ada data</td></tr>`;
-
-  // FOOT totals
-  const foot = document.getElementById('tableFoot');
-  const totals = showCols.map(c => {
-    if (c === showCols[0]) return `<td>TOTAL (${data.length} rows)</td>`;
-    const vals = data.map(r => r[c]).filter(isNum);
-    if (vals.length) return `<td>${vals.reduce((a,b)=>a+Number(b),0).toLocaleString('id-ID', {maximumFractionDigits:2})}</td>`;
-    return `<td></td>`;
-  });
-  foot.innerHTML = `<tr>${totals.join('')}</tr>`;
-
-  // STATS
-  const backlog = data.filter(r => r['Backlog'] === 'BACKLOG');
-  const ok = data.filter(r => r['Backlog'] === 'OK');
-  const totalQty = data.map(r=>r['Backlog Qty']).filter(isNum).reduce((a,b)=>a+Number(b),0);
-  document.getElementById('statsBar').innerHTML = `
-    <div class="stat"><span class="stat-label">Total Rows</span><span class="stat-val">${data.length}</span></div>
-    <div class="stat"><span class="stat-label">Backlog</span><span class="stat-val red">${backlog.length}</span></div>
-    <div class="stat"><span class="stat-label">OK</span><span class="stat-val green">${ok.length}</span></div>
-    <div class="stat"><span class="stat-label">Total Backlog Qty</span><span class="stat-val">${totalQty.toLocaleString('id-ID')}</span></div>
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-cell"><span class="stat-label">Contracts</span><span class="stat-val blue">${data.length}</span></div>
+    <div class="stat-cell"><span class="stat-label">Total SC Qty (mt)</span><span class="stat-val">${totalSC.toLocaleString('id-ID')}</span></div>
+    <div class="stat-cell"><span class="stat-label">Vol Fixations (mt)</span><span class="stat-val amber">${totalVol.toLocaleString('id-ID')}</span></div>
+    <div class="stat-cell"><span class="stat-label">Outstanding (mt)</span><span class="stat-val red">${totalOut.toLocaleString('id-ID')}</span></div>
+    <div class="stat-cell"><span class="stat-label">Avg Unit Price ($/kg)</span><span class="stat-val green">${avgPrice.toFixed(3)}</span></div>
   `;
 }
 
-function renderRow(row, cols) {
-  return `<tr>${cols.map(c => {
-    const v = row[c];
-    if (c === 'Backlog') {
-      const cls = v === 'BACKLOG' ? 'backlog' : v === 'OK' ? 'ok' : '';
-      return `<td><span class="status-badge ${cls}">${v || '-'}</span></td>`;
-    }
-    if (numCols.includes(c) && isNum(v)) {
-      return `<td class="num-cell">${Number(v).toLocaleString('id-ID', {maximumFractionDigits:4})}</td>`;
-    }
-    return `<td>${v === '' || v === null || v === undefined ? '-' : v}</td>`;
-  }).join('')}</tr>`;
+// ── PIVOT 1: SUMMARY ──
+function renderPivot1(data) {
+  const cols = [
+    { key: 'customer', label: 'Customer Name', w: 220 },
+    { key: 'contractNum', label: 'Contract Number', w: 180 },
+    { key: 'sales', label: 'Sales', w: 90 },
+    { key: 'product', label: 'Product', w: 120 },
+    { key: 'status', label: 'Status', w: 110 },
+    { key: 'unitPrice', label: 'Unit Price ($/KG)', w: 100, num: true },
+    { key: 'exw', label: 'EXW ($/MT)', w: 90, num: true },
+    { key: 'scQty', label: 'SC Qty (mt)', w: 90, num: true },
+    { key: 'volFix', label: 'Vol Fixations (mt)', w: 110, num: true },
+    { key: 'outstanding', label: 'Outstanding (mt)', w: 110, num: true },
+  ];
+
+  // HEAD
+  document.getElementById('tHead').innerHTML = `<tr>${cols.map(c =>
+    `<th onclick="doSort('${c.key}')" class="${sortCol===c.key?'sorted':''}" style="min-width:${c.w||100}px">
+      ${c.label}<span class="sort-icon">${sortCol===c.key?(sortDir===1?'▲':'▼'):'⇅'}</span>
+    </th>`
+  ).join('')}</tr>`;
+
+  // BODY
+  let html = '';
+  data.forEach(row => {
+    const status = pick(row, COL.status);
+    const badgeCls = /active|outstanding/i.test(status) ? 'badge-backlog' :
+                     /complet/i.test(status) ? 'badge-completed' :
+                     /cancel/i.test(status) ? 'badge-cancelled' : 'badge-ok';
+    const out = num(pick(row, COL.outstanding));
+    html += `<tr>
+      <td>${pick(row, COL.customer) || '-'}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text2)">${pick(row, COL.contractNum) || '-'}</td>
+      <td>${pick(row, COL.sales) || '-'}</td>
+      <td style="color:var(--blue);font-size:11px">${pick(row, COL.product) || '-'}</td>
+      <td><span class="badge ${badgeCls}">${status || '-'}</span></td>
+      <td class="num">${fmtPrice(pick(row, COL.unitPrice))}</td>
+      <td class="num">${fmt(pick(row, COL.exw))}</td>
+      <td class="num">${fmt(pick(row, COL.scQty), 0)}</td>
+      <td class="num">${fmt(pick(row, COL.volFix), 0)}</td>
+      <td class="num ${out > 0 ? 'high' : 'zero'}">${fmt(out, 0)}</td>
+    </tr>`;
+  });
+  document.getElementById('tBody').innerHTML = html || `<tr><td colspan="10" class="empty-state">Tidak ada data</td></tr>`;
+
+  // FOOT
+  const totSC = data.reduce((s,r)=>s+num(pick(r,COL.scQty)),0);
+  const totVol = data.reduce((s,r)=>s+num(pick(r,COL.volFix)),0);
+  const totOut = data.reduce((s,r)=>s+num(pick(r,COL.outstanding)),0);
+  const avgPrice = data.length ? data.reduce((s,r)=>s+num(pick(r,COL.unitPrice)),0)/data.length : 0;
+  const avgEXW = data.length ? data.reduce((s,r)=>s+num(pick(r,COL.exw)),0)/data.length : 0;
+
+  document.getElementById('tFoot').innerHTML = `
+    <tr>
+      <td colspan="5">GRAND TOTAL — ${data.length} contracts</td>
+      <td class="avg-cell">${fmtPrice(avgPrice)}</td>
+      <td class="avg-cell">${fmt(avgEXW)}</td>
+      <td>${totSC.toLocaleString('id-ID')}</td>
+      <td>${totVol.toLocaleString('id-ID')}</td>
+      <td>${totOut.toLocaleString('id-ID')}</td>
+    </tr>
+    <tr class="avg-row">
+      <td colspan="5">AVG</td>
+      <td>${fmtPrice(avgPrice)}</td>
+      <td>${fmt(avgEXW)}</td>
+      <td>${data.length ? (totSC/data.length).toFixed(1) : '-'}</td>
+      <td>${data.length ? (totVol/data.length).toFixed(1) : '-'}</td>
+      <td>${data.length ? (totOut/data.length).toFixed(1) : '-'}</td>
+    </tr>`;
+}
+
+// ── PIVOT 2: QTY PER MONTH ──
+function renderPivot2(data) {
+  const months = window._monthCols || [];
+  const now = new Date();
+  const currentMonthStr = now.toLocaleString('en-US', {month:'short'}) + '-' + String(now.getFullYear()).slice(-2);
+
+  const fixedCols = ['Customer Name', 'Contract Number', 'Sales'];
+
+  // HEAD
+  const fixedHead = fixedCols.map((c,i) => `<th onclick="doSort('f${i}')" style="min-width:${i===0?200:150}px">${c}</th>`).join('');
+  const monthHead = months.map(m => {
+    const isRecent = m >= currentMonthStr;
+    return `<th class="month-col${isRecent?' recent':''}">${m}</th>`;
+  }).join('');
+  document.getElementById('tHead').innerHTML = `<tr>${fixedHead}<th class="month-col" style="min-width:80px">Total</th>${monthHead}</tr>`;
+
+  // BODY
+  let html = '';
+  data.forEach(row => {
+    const monthVals = months.map(m => num(row[m]));
+    const total = monthVals.reduce((a,b)=>a+b,0);
+    const monthCells = monthVals.map(v =>
+      `<td class="num ${v>0?'high':'zero'}">${v>0?v.toLocaleString('id-ID'):'-'}</td>`
+    ).join('');
+    html += `<tr>
+      <td>${pick(row, COL.customer) || '-'}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text2)">${pick(row, COL.contractNum) || '-'}</td>
+      <td>${pick(row, COL.sales) || '-'}</td>
+      <td class="num ${total>0?'high':''}">${total>0?total.toLocaleString('id-ID'):'-'}</td>
+      ${monthCells}
+    </tr>`;
+  });
+  document.getElementById('tBody').innerHTML = html || `<tr><td colspan="${3+months.length+1}" class="empty-state">Tidak ada data</td></tr>`;
+
+  // FOOT totals
+  const monthTotals = months.map(m => data.reduce((s,r)=>s+num(r[m]),0));
+  const grandTotal = monthTotals.reduce((a,b)=>a+b,0);
+  const totalCells = monthTotals.map(v => `<td>${v>0?v.toLocaleString('id-ID'):'-'}</td>`).join('');
+  const avgMonths = months.map(m => {
+    const vals = data.map(r=>num(r[m])).filter(v=>v>0);
+    return vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length) : 0;
+  });
+  const avgCells = avgMonths.map(v => `<td>${v>0?v.toFixed(1):'-'}</td>`).join('');
+
+  document.getElementById('tFoot').innerHTML = `
+    <tr>
+      <td colspan="3">GRAND TOTAL — ${data.length} contracts</td>
+      <td>${grandTotal.toLocaleString('id-ID')}</td>
+      ${totalCells}
+    </tr>
+    <tr class="avg-row">
+      <td colspan="3">AVG (non-zero months)</td>
+      <td>-</td>
+      ${avgCells}
+    </tr>`;
 }
 
 function doSort(col) {
@@ -478,40 +720,100 @@ function doSort(col) {
   render();
 }
 
-function exportExcel() {
+function switchPage(p) {
+  currentPage = p;
+  document.querySelectorAll('.page-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&p==='usd')||(i===1&&p==='idr')));
+  // For now, same data — in full version, filter by type
+  if (allData.length) render();
+}
+
+function switchPivot(n) {
+  currentPivot = n;
+  document.getElementById('ptab1').classList.toggle('active', n===1);
+  document.getElementById('ptab2').classList.toggle('active', n===2);
+  sortCol = null;
+  render();
+}
+
+// ── EXPORT ──
+function exportPivot1() {
   const data = getFiltered();
-  const ws = XLSX.utils.json_to_sheet(data);
-  
-  // Style header row
+  const rows = data.map(r => ({
+    'Customer Name': pick(r, COL.customer),
+    'Contract Number': pick(r, COL.contractNum),
+    'Sales Name': pick(r, COL.sales),
+    'Product': pick(r, COL.product),
+    'Status': pick(r, COL.status),
+    'Customer Group': pick(r, COL.custGroup),
+    'Unit Price ($/KG)': num(pick(r, COL.unitPrice)),
+    'EXW ($/MT)': num(pick(r, COL.exw)),
+    'SC Qty (mt)': num(pick(r, COL.scQty)),
+    'Vol Fixations (mt)': num(pick(r, COL.volFix)),
+    'Outstanding (mt)': num(pick(r, COL.outstanding)),
+  }));
+
+  // Totals & avg row
+  const totals = { 'Customer Name': 'GRAND TOTAL', 'Contract Number': '', 'Sales Name': '', 'Product': '', 'Status': data.length + ' contracts', 'Customer Group': '' };
+  ['Unit Price ($/KG)','EXW ($/MT)','SC Qty (mt)','Vol Fixations (mt)','Outstanding (mt)'].forEach(k => {
+    totals[k] = rows.reduce((s,r)=>s+num(r[k]),0);
+  });
+  const avgs = { 'Customer Name': 'AVG', 'Contract Number': '', 'Sales Name': '', 'Product': '', 'Status': '', 'Customer Group': '' };
+  ['Unit Price ($/KG)','EXW ($/MT)','SC Qty (mt)','Vol Fixations (mt)','Outstanding (mt)'].forEach(k => {
+    avgs[k] = rows.length ? rows.reduce((s,r)=>s+num(r[k]),0)/rows.length : 0;
+  });
+
+  buildAndDownload([...rows, totals, avgs], 'USD_Pivot1_Summary');
+}
+
+function exportPivot2() {
+  const data = getFiltered();
+  const months = window._monthCols || [];
+  const rows = data.map(r => {
+    const row = {
+      'Customer Name': pick(r, COL.customer),
+      'Contract Number': pick(r, COL.contractNum),
+      'Sales Name': pick(r, COL.sales),
+      'Total': months.reduce((s,m)=>s+num(r[m]),0),
+    };
+    months.forEach(m => { row[m] = num(r[m]) || ''; });
+    return row;
+  });
+
+  // Grand total row
+  const grand = { 'Customer Name': 'GRAND TOTAL', 'Contract Number': '', 'Sales Name': '', 'Total': 0 };
+  months.forEach(m => { grand[m] = data.reduce((s,r)=>s+num(r[m]),0) || ''; grand['Total'] += num(grand[m]); });
+
+  // Avg row
+  const avg = { 'Customer Name': 'AVG (non-zero)', 'Contract Number': '', 'Sales Name': '', 'Total': '' };
+  months.forEach(m => {
+    const vals = data.map(r=>num(r[m])).filter(v=>v>0);
+    avg[m] = vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : '';
+  });
+
+  buildAndDownload([...rows, grand, avg], 'USD_Pivot2_Monthly');
+}
+
+function buildAndDownload(rows, name) {
+  const ws = XLSX.utils.json_to_sheet(rows);
+  // Style header
   const range = XLSX.utils.decode_range(ws['!ref']);
   for (let C = range.s.c; C <= range.e.c; C++) {
-    const addr = XLSX.utils.encode_cell({r:0, c:C});
-    if (!ws[addr]) continue;
-    ws[addr].s = {
-      fill: { fgColor: { rgb: '1A3A2A' } },
-      font: { bold: true, color: { rgb: 'E8F0EB' } }
-    };
+    const cell = ws[XLSX.utils.encode_cell({r:0,c:C})];
+    if (cell) cell.s = { fill:{fgColor:{rgb:'1F2937'}}, font:{bold:true,color:{rgb:'94A3B8'}} };
   }
-
-  // Color backlog/ok rows
-  const backlogCol = columns.indexOf('Backlog');
-  if (backlogCol >= 0) {
-    data.forEach((row, i) => {
-      const val = row['Backlog'];
-      const color = val === 'BACKLOG' ? 'FDE8E8' : val === 'OK' ? 'E8F5ED' : null;
-      if (color) {
-        for (let C = range.s.c; C <= range.e.c; C++) {
-          const addr = XLSX.utils.encode_cell({r: i+1, c: C});
-          if (!ws[addr]) ws[addr] = {v:''};
-          ws[addr].s = { fill: { fgColor: { rgb: color } } };
-        }
-      }
-    });
+  // Style total & avg
+  const lastR = range.e.r;
+  for (let C = range.s.c; C <= range.e.c; C++) {
+    const ta = ws[XLSX.utils.encode_cell({r:lastR-1,c:C})];
+    if (ta) ta.s = { fill:{fgColor:{rgb:'1F2D1F'}}, font:{bold:true,color:{rgb:'56D364'}} };
+    const aa = ws[XLSX.utils.encode_cell({r:lastR,c:C})];
+    if (aa) aa.s = { fill:{fgColor:{rgb:'1F2820'}}, font:{color:{rgb:'D29922'}} };
   }
-
+  // Col widths
+  ws['!cols'] = Array(range.e.c+1).fill(null).map((_,i) => ({wch: i<4?22:12}));
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Pivot');
-  XLSX.writeFile(wb, 'sales_pivot_' + new Date().toISOString().slice(0,10) + '.xlsx');
+  XLSX.utils.book_append_sheet(wb, ws, name.replace(/[^a-zA-Z0-9]/g,'_').slice(0,31));
+  XLSX.writeFile(wb, name + '_' + new Date().toISOString().slice(0,10) + '.xlsx');
 }
 </script>
 </body>
