@@ -6,815 +6,1066 @@
 <title>Tereos FKS — Sales Data Forecast</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap');
-
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-
-:root {
-  --bg: #0d1117;
-  --surface: #161b22;
-  --surface2: #1c2128;
-  --surface3: #22272e;
-  --border: #30363d;
-  --border2: #444c56;
-  --text: #e6edf3;
-  --text2: #8b949e;
-  --text3: #484f58;
-  --accent: #3fb950;
-  --accent2: #2ea043;
-  --accent-dim: rgba(63,185,80,0.12);
-  --red: #f85149;
-  --red-dim: rgba(248,81,73,0.12);
-  --blue: #58a6ff;
-  --blue-dim: rgba(88,166,255,0.12);
-  --amber: #d29922;
-  --amber-dim: rgba(210,153,34,0.12);
-  --backlog-bg: #3d1a1a;
-  --backlog-text: #ff7b72;
-  --ok-bg: #1a3d2b;
-  --ok-text: #56d364;
-  --header-bg: #1f2937;
-  --mono: 'DM Mono', monospace;
-  --sans: 'DM Sans', sans-serif;
-  --display: 'Syne', sans-serif;
+:root{
+  --bg:#eef5fc;--surface:#fff;--surface2:#f4f9ff;--border:#ccdff2;--border2:#9fc3e0;
+  --text:#0b1e33;--text2:#2e5070;--text3:#7099ba;
+  --accent:#1565c0;--accent2:#0d47a1;--accent-light:#dbeeff;
+  --navy:#1a2f4a;--green:#1b6b3a;--green-bg:#d4f0e0;
+  --red:#b83228;--red-bg:#fde8e6;--amber:#b45309;
+  --mono:'JetBrains Mono',monospace;--sans:'Poppins',sans-serif;
+  --shadow:0 1px 4px rgba(10,40,80,.10),0 4px 18px rgba(10,40,80,.07);
 }
-
-body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 13px; }
-
-/* ── TOPBAR ── */
-.topbar {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 0 20px;
-  height: 52px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-.logo { font-family: var(--display); font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
-.logo span { color: var(--accent); }
-.topbar-sep { width: 1px; height: 18px; background: var(--border); }
-.topbar-sub { font-size: 12px; color: var(--text2); font-weight: 300; }
-.topbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-
-/* ── PAGE TABS ── */
-.page-tabs {
-  display: flex;
-  gap: 0;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 0 20px;
-}
-.page-tab {
-  padding: 10px 18px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text2);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: all 0.15s;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--display);
-  letter-spacing: 0.02em;
-}
-.page-tab:hover { color: var(--text); }
-.page-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-.tab-badge {
-  background: var(--accent-dim);
-  color: var(--accent);
-  border-radius: 99px;
-  padding: 1px 6px;
-  font-size: 10px;
-  font-family: var(--mono);
-}
-
-/* ── UPLOAD ── */
-#uploadSection { padding: 40px 20px; }
-.upload-card {
-  max-width: 560px;
-  margin: 0 auto;
-  background: var(--surface);
-  border: 1px dashed var(--border2);
-  border-radius: 12px;
-  padding: 48px 32px;
-  text-align: center;
-  cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
-}
-.upload-card:hover, .upload-card.drag { border-color: var(--accent); background: var(--accent-dim); }
-.upload-card input { display: none; }
-.upload-icon { font-size: 36px; margin-bottom: 14px; }
-.upload-title { font-family: var(--display); font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-.upload-sub { font-size: 13px; color: var(--text2); line-height: 1.5; }
-.upload-sub a { color: var(--accent); cursor: pointer; }
-.demo-btn {
-  margin-top: 20px;
-  background: none;
-  border: 1px solid var(--border2);
-  color: var(--text2);
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-  font-family: var(--sans);
-  transition: all 0.15s;
-}
-.demo-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-/* ── FILTERS ── */
-.filters-bar {
-  padding: 12px 20px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-.filter-group { display: flex; align-items: center; gap: 6px; }
-.filter-label { font-size: 11px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
-select, input[type=text] {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 5px 10px;
-  font-size: 12px;
-  font-family: var(--sans);
-  color: var(--text);
-  outline: none;
-  transition: border-color 0.15s;
-}
-select:focus, input[type=text]:focus { border-color: var(--accent); }
-select { cursor: pointer; }
-
-/* ── PIVOT TABS ── */
-.pivot-tabs {
-  display: flex;
-  gap: 4px;
-  padding: 12px 20px 0;
-  background: var(--bg);
-}
-.pivot-tab {
-  padding: 7px 14px;
-  border-radius: 6px 6px 0 0;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  color: var(--text2);
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-bottom: none;
-  transition: all 0.15s;
-  font-family: var(--display);
-}
-.pivot-tab.active { background: var(--surface); color: var(--text); border-color: var(--border2); }
-.pivot-tab:hover:not(.active) { color: var(--text); }
-
-/* ── STATS ── */
-.stats-row {
-  display: flex;
-  gap: 1px;
-  background: var(--border);
-  border-bottom: 1px solid var(--border);
-}
-.stat-cell {
-  flex: 1;
-  background: var(--surface2);
-  padding: 12px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.stat-label { font-size: 10px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; }
-.stat-val { font-size: 20px; font-weight: 600; font-family: var(--mono); }
-.stat-val.green { color: var(--accent); }
-.stat-val.red { color: var(--red); }
-.stat-val.blue { color: var(--blue); }
-.stat-val.amber { color: var(--amber); }
-
-/* ── TABLE ── */
-.table-wrap {
-  overflow: auto;
-  max-height: calc(100vh - 260px);
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-}
-table { width: 100%; border-collapse: collapse; min-width: 800px; }
-
-thead th {
-  background: #1f2937;
-  color: #94a3b8;
-  padding: 8px 12px;
-  text-align: left;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  white-space: nowrap;
-  border-right: 1px solid var(--border);
-  cursor: pointer;
-  user-select: none;
-  font-family: var(--display);
-}
-thead th:hover { background: #263347; color: var(--text); }
-thead th.sorted { color: var(--accent); }
-.sort-icon { margin-left: 4px; opacity: 0.5; font-size: 9px; }
-thead th.sorted .sort-icon { opacity: 1; }
-
-/* month header */
-thead th.month-col {
-  background: #1a2535;
-  text-align: right;
-  font-size: 9px;
-  padding: 8px 8px;
-  min-width: 60px;
-}
-thead th.month-col.recent { background: #1f2d1f; color: #6ee7b7; }
-
-tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
-tbody tr:hover { background: rgba(255,255,255,0.03); }
-tbody td {
-  padding: 7px 12px;
-  white-space: nowrap;
-  color: var(--text);
-  border-right: 1px solid rgba(255,255,255,0.04);
-  font-size: 12.5px;
-}
-.num { font-family: var(--mono); text-align: right; font-size: 12px; color: #a8c8e8; }
-.num.zero { color: var(--text3); }
-.num.high { color: var(--accent); font-weight: 500; }
-
-/* status badges */
-.badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  font-family: var(--mono);
-}
-.badge-backlog { background: var(--backlog-bg); color: var(--backlog-text); }
-.badge-ok { background: var(--ok-bg); color: var(--ok-text); }
-.badge-completed { background: var(--blue-dim); color: var(--blue); }
-.badge-cancelled { background: var(--amber-dim); color: var(--amber); }
-
-/* grand total row */
-tfoot tr { position: sticky; bottom: 0; }
-tfoot td {
-  background: #1f2d1f;
-  padding: 8px 12px;
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--accent);
-  text-align: right;
-  border-top: 2px solid var(--accent2);
-  border-right: 1px solid rgba(255,255,255,0.06);
-}
-tfoot td:first-child { text-align: left; font-family: var(--display); font-size: 11px; letter-spacing: 0.04em; }
-tfoot td.avg-cell { color: var(--amber); }
-
-/* AVG row */
-.avg-row td {
-  background: #1f2820 !important;
-  color: var(--amber) !important;
-  font-family: var(--mono) !important;
-  font-size: 11px !important;
-  text-align: right;
-  border-top: 1px dashed var(--border2);
-  padding: 5px 12px !important;
-}
-.avg-row td:first-child { color: var(--text2) !important; text-align: left; font-size: 10px !important; letter-spacing: 0.06em; }
-
-/* BUTTONS */
-.btn {
-  padding: 7px 14px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-family: var(--sans);
-  font-weight: 500;
-  cursor: pointer;
-  border: none;
-  transition: all 0.15s;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.btn-primary { background: var(--accent2); color: white; }
-.btn-primary:hover { background: var(--accent); }
-.btn-outline { background: transparent; border: 1px solid var(--border2); color: var(--text2); }
-.btn-outline:hover { border-color: var(--accent); color: var(--accent); }
-
-.hidden { display: none !important; }
-
-/* EMPTY */
-.empty-state { padding: 60px; text-align: center; color: var(--text3); font-size: 13px; }
-
-/* Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--surface); }
-::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;font-size:13px}
+/* TOPBAR */
+.topbar{background:var(--surface);border-bottom:2px solid #9fc3e0;padding:0 24px;height:56px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
+.logo{display:flex;align-items:center;gap:8px}
+.logo-mark{width:32px;height:32px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px}
+.logo-text{font-size:15px;font-weight:700;color:var(--text)}.logo-text span{color:var(--accent)}
+.topbar-sep{width:1px;height:20px;background:var(--border)}
+.topbar-sub{font-size:12px;color:var(--text2)}
+.topbar-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+.btn{padding:7px 14px;border-radius:6px;font-size:12px;font-family:var(--sans);font-weight:600;cursor:pointer;border:none;transition:all .15s;display:flex;align-items:center;gap:5px}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent2)}
+.btn-outline{background:#fff;border:1.5px solid var(--border2);color:var(--accent)}.btn-outline:hover{border-color:var(--accent);background:var(--accent-light)}
+/* PRODUCT TABS */
+.prod-tabs{background:var(--surface);border-bottom:2px solid var(--border);padding:0 16px;display:flex;gap:0;overflow-x:auto;scrollbar-width:none}
+.prod-tabs::-webkit-scrollbar{display:none}
+.prod-tab{padding:10px 18px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;margin-bottom:-2px;white-space:nowrap;font-family:var(--sans)}
+.prod-tab:hover{color:var(--accent)}.prod-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+/* UPLOAD */
+#uploadSection{padding:40px 24px}
+.upload-card{max-width:520px;margin:0 auto;background:var(--surface);border:2px dashed var(--border2);border-radius:16px;padding:48px 32px;text-align:center;cursor:pointer;transition:all .2s;box-shadow:var(--shadow)}
+.upload-card:hover,.upload-card.drag{border-color:var(--accent);background:var(--accent-light);transform:translateY(-2px)}
+.upload-card input{display:none}
+.upload-icon{font-size:36px;margin-bottom:14px}
+.upload-title{font-size:17px;font-weight:700;margin-bottom:8px}
+.upload-sub{font-size:13px;color:var(--text2);line-height:1.6}
+.upload-sub a{color:var(--accent);font-weight:500}
+.demo-btn{margin-top:16px;background:none;border:1.5px solid var(--border2);color:var(--text2);padding:8px 18px;border-radius:99px;font-size:12px;cursor:pointer;font-family:var(--sans);font-weight:500;transition:all .15s}
+.demo-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-light)}
+/* FILTERS */
+.filters-bar{padding:10px 24px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.flabel{font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+select,input[type=text]{background:var(--surface2);border:1.5px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;font-family:var(--sans);color:var(--text);outline:none;transition:border-color .15s}
+select:focus,input[type=text]:focus{border-color:var(--accent)}
+/* STATS */
+.stats-row{display:flex;background:var(--navy);border-bottom:3px solid #9fc3e0}
+.stat-cell{flex:1;padding:12px 20px;border-right:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:4px}
+.stat-cell:last-child{border-right:none}
+.stat-label{font-size:10px;color:rgba(180,210,240,.7);font-weight:700;text-transform:uppercase;letter-spacing:.09em}
+.stat-val{font-size:24px;font-weight:800;font-family:var(--mono);color:#fff;line-height:1}
+.stat-val.blue{color:#64b5f6}.stat-val.green{color:#66bb6a}.stat-val.red{color:#ef9a9a}.stat-val.amber{color:#ffcc02}
+/* TABLE */
+.table-wrap{overflow:auto;max-height:calc(100vh - 240px);background:var(--surface)}
+table{width:100%;border-collapse:collapse;min-width:800px}
+thead th{background:#1a2f4a !important;color:#b8d8f4 !important;padding:8px 10px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;position:sticky;top:0;z-index:10;white-space:nowrap;border-right:1px solid rgba(255,255,255,.1);cursor:pointer;user-select:none;font-family:var(--sans)}
+thead th:hover{background:#1f5a9e !important}
+thead th.mth{background:#1a3055 !important;color:#fff !important;text-align:center;font-size:9.5px;font-weight:700;min-width:60px;padding:8px 5px}
+thead th.mth.past{background:#3d1a1a !important;color:#ffaaaa !important}
+/* TYPE GROUP HEADER */
+.type-group-row td{background:#e8f0f8;font-weight:700;font-size:11px;color:var(--accent2);padding:6px 10px;letter-spacing:.05em;text-transform:uppercase;border-bottom:2px solid var(--border2);border-top:2px solid var(--border2)}
+tbody tr{border-bottom:1px solid var(--border)}
+tbody tr:nth-child(even):not(.type-group-row){background:#eef5fc}
+tbody tr:hover:not(.type-group-row){background:#dbeeff}
+tbody td{padding:7px 10px;white-space:nowrap;color:var(--text);border-right:1px solid var(--border);font-size:12px}
+.n{font-family:var(--mono);text-align:right;font-size:11.5px}
+.nb{color:var(--accent);font-weight:600}.nr{color:var(--red);font-weight:700}.na{color:var(--amber);font-weight:600}.nd{color:var(--text3)}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+.bbl{background:var(--red-bg);color:var(--red)}.bok{background:var(--green-bg);color:var(--green)}
+.btyp{background:#fef9c3;color:#854d0e;font-size:9px;padding:2px 7px;border-radius:4px;font-weight:700}
+tfoot tr{position:sticky;bottom:0}
+tfoot td{background:#e4f2ff;padding:7px 10px;font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--accent2);text-align:right;border-top:2px solid #9fc3e0;border-right:1px solid var(--border)}
+tfoot td:first-child{text-align:left;font-family:var(--sans);font-size:11px;color:var(--accent)}
+.hidden{display:none !important}
+.empty{padding:60px;text-align:center;color:var(--text3)}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 </style>
 </head>
 <body>
 
 <div class="topbar">
-  <div class="logo">Tereos <span>FKS</span></div>
+  <div class="logo">
+    <div class="logo-mark">T</div>
+    <div class="logo-text">Tereos <span>FKS</span></div>
+  </div>
   <div class="topbar-sep"></div>
   <div class="topbar-sub">Sales Data Forecast</div>
-  <div class="topbar-right">
-    <button class="btn btn-outline" id="exportBtn1" onclick="exportPivot1()" style="display:none">↓ Export Pivot 1</button>
-    <button class="btn btn-primary" id="exportBtn2" onclick="exportPivot2()" style="display:none">↓ Export Pivot 2 (Monthly)</button>
-  </div>
+
 </div>
 
-<div class="page-tabs">
-  <div class="page-tab active" onclick="switchPage('usd')">
-    💵 USD <span class="tab-badge">Page 1</span>
-  </div>
-  <div class="page-tab" onclick="switchPage('idr')">
-    🇮🇩 IDR <span class="tab-badge">Page 2</span>
-  </div>
-</div>
+<!-- PRODUCT TABS — dynamically populated -->
+<div class="prod-tabs" id="prodTabs"></div>
 
 <!-- UPLOAD -->
 <div id="uploadSection">
-  <div class="upload-card" id="dropZone" onclick="document.getElementById('fileInput').click()">
-    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" onchange="handleFile(this.files[0])">
-    <div class="upload-icon">📂</div>
-    <div class="upload-title">Upload File dari Power BI</div>
-    <div class="upload-sub">Export CSV atau Excel dari Power BI, lalu drop di sini<br><a onclick="event.stopPropagation()">atau klik untuk pilih file</a></div>
+  <div class="upload-card" id="dz" onclick="document.getElementById('fi').click()">
+    <input type="file" id="fi" accept=".csv,.xlsx,.xls" onchange="handleFile(this.files[0])">
+    <div class="upload-icon">☁️</div>
+    <div class="upload-title">Upload File Export Power BI</div>
+    <div class="upload-sub">1 file Excel — semua produk dalam 1 sheet<br><a onclick="event.stopPropagation()">atau klik untuk browse</a></div>
   </div>
-  <div style="text-align:center;margin-top:16px;">
-    <button class="demo-btn" onclick="loadDemo()">▶ Coba dengan demo data (USD)</button>
+  <div style="text-align:center;margin-top:14px">
+    <button class="demo-btn" onclick="loadDemo()">▶ Lihat demo data</button>
   </div>
 </div>
 
 <!-- APP -->
 <div id="appSection" class="hidden">
-
-  <div class="filters-bar" id="filtersBar">
-    <div class="filter-group">
-      <span class="filter-label">Status</span>
-      <select id="fStatus" onchange="render()"><option value="">All</option></select>
-    </div>
-    <div class="filter-group">
-      <span class="filter-label">Product</span>
-      <select id="fProduct" onchange="render()"><option value="">All</option></select>
-    </div>
-    <div class="filter-group">
-      <span class="filter-label">Sales</span>
-      <select id="fSales" onchange="render()"><option value="">All</option></select>
-    </div>
-    <div class="filter-group">
-      <span class="filter-label">Cust. Group</span>
-      <select id="fGroup" onchange="render()"><option value="">All</option></select>
-    </div>
-    <div class="filter-group" style="margin-left:auto">
-      <input type="text" id="searchBox" placeholder="🔍 Search..." oninput="render()" style="width:180px">
+  <div class="filters-bar">
+    <div style="display:flex;align-items:center;gap:6px"><span class="flabel">Status</span><select id="fS" onchange="render()"><option value="">All</option></select></div>
+    <div style="display:flex;align-items:center;gap:6px"><span class="flabel">Sales</span><select id="fSl" onchange="render()"><option value="">All</option></select></div>
+    <div style="display:flex;align-items:center;gap:6px"><span class="flabel">SC No</span><input type="text" id="fSC" placeholder="Search SC Number..." oninput="render()" style="width:160px"></div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <button onclick="doExport()" class="btn btn-primary" style="font-size:11px;padding:6px 14px">↓ Export Excel</button>
+      <input type="text" id="sq" placeholder="🔍 Search customer..." oninput="render()" style="width:180px">
     </div>
   </div>
-
-  <div class="pivot-tabs">
-    <div class="pivot-tab active" id="ptab1" onclick="switchPivot(1)">Pivot 1 — Summary</div>
-    <div class="pivot-tab" id="ptab2" onclick="switchPivot(2)">Pivot 2 — Qty per Month</div>
+  <!-- SUB TABS -->
+  <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;gap:0">
+    <div id="stab-main" onclick="switchSubTab('main')"
+      style="padding:8px 20px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);font-family:var(--sans)">
+      📊 Main
+    </div>
+    <div id="stab-adj" onclick="switchSubTab('adjusted')"
+      style="padding:8px 20px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);font-family:var(--sans)">
+      🔧 Adjusted
+    </div>
   </div>
-
-  <div class="stats-row" id="statsRow"></div>
-
-  <div class="table-wrap" id="tableWrap">
-    <table id="mainTable">
-      <thead id="tHead"></thead>
-      <tbody id="tBody"></tbody>
-      <tfoot id="tFoot"></tfoot>
-    </table>
+  <div class="stats-row" id="stats"></div>
+  <div class="table-wrap">
+    <table><thead id="th"></thead><tbody id="tb"></tbody><tfoot id="tf"></tfoot></table>
   </div>
 </div>
 
 <script>
-let allData = [];
-let currentPage = 'usd';
-let currentPivot = 1;
-let sortCol = null, sortDir = 1;
+var allRaw = [];
+var idrRaw = [];
+var curProd = '';
+var curSubTab = 'main'; // 'main' or 'adjusted'
+var products = [];
+var sortCol = null, sortDir = 1;
 
-// ── COLUMN MAPS ──
-// These column names match what Power BI exports.
-// Users can adjust if their export columns differ.
-const COL = {
-  customer:    ['Contract[6. CUSTOMER NAME]', 'Customer Name', 'CUSTOMER NAME'],
-  contractNum: ['Contract[1. Contract number]', 'Main Contract Number', 'Contract Number', 'SC NUMBER', 'Contract number'],
-  sales:       ['Contract[8. Sales Name]', 'Sales Name', 'SALES NAME'],
-  unitPrice:   ['Contract[15. Unit Price]', 'Unit Price ($/KG)', 'UNIT PRICE', 'Unit Price'],
-  exw:         ['Contract[17. EXW (USD/MT)1]', 'EXW ($/MT)', 'EXW USD PRICE', 'EXW USD Price'],
-  exwIdr:      ['Contract[16. EXW (IDR/KG)', 'EXW (IDR/KG)', 'EXW IDR PRICE', 'EXW IDR Price'],
-  scQty:       ['SC Qty', 'Contract Qty (mt)', 'Sum of SC (mt)', 'Contract Qty'],
-  volFix:      ['Vol Fixations', 'Volume Fixations (mt)', 'Sum of BALANCE CONTRACT'],
-  outstanding: ['Outstanding', 'Outstanding Contract (mt)', 'Sum of SC+SO'],
-  soCreated:   ['SO Created (mt)', 'Sum of SO'],
-  status:      ['Contract[30. STATUS CONTRACT]', 'Status', 'STATUS CONTRACT', 'Backlog'],
-  product:     ['Contract[10. Product]', 'Product', 'PRODUCT'],
-  custGroup:   ['Customer Group', 'Contract[6. Customer Group]'],
-  dpMonth:     ['Contract[32. DP Month]', 'DP Month'],
-  type:        ['Type', 'Contract[12. Contract type]', 'Contract type'],
+// USD column keys
+var K = {
+  prod:   'Contract[10. Product]',
+  stat:   'Contract[30. STATUS CONTRACT]',
+  type:   'Contract[12. Contract type]',
+  exw:    'Contract[17. EXW (USD/MT)1]',
+  up:     'Contract[15. Unit Price]',
+  dpMonth:'Contract[32. DP Month]',
+  cust:   'Contract[6. CUSTOMER NAME]',
+  scNo:   'Contract[Contract Number USD]',
+  scNoAlt:'Contract[1. Contract number]',
+  sales:  'Contract[8. Sales Name]',
+  vf:     '[Volume_Fixations__mt_]',
+  qty:    '[Sumv33__SC_Qty]',
 };
 
-function pick(row, keys) {
-  for (const k of keys) if (row[k] !== undefined && row[k] !== '') return row[k];
-  return '';
+// IDR column keys — EXACT names confirmed
+var KI = {
+  prod:    'Contract[10. Product]',
+  stat:    'Contract[30. STATUS CONTRACT]',
+  type:    'Contract[12. Contract type]',
+  exwIDR:  'Contract[16. EXW (IDR/KG)1]',
+  exwUSD:  'Contract[17. EXW (USD/MT)1]',
+  up:      'Contract[15. Unit Price]',
+  dpMonth: 'Contract[32. DP Month]',
+  cust:    'Contract[6. CUSTOMER NAME]',
+  scNo:    'Contract[1. Contract number]',
+  sales:   'Contract[8. Sales Name]',
+  scQty:   '[Sumv33__SC_Qty]',          // SC Qty
+  bal:     'Outstanding IDR',            // Balance Contract — correct column (no brackets)
+  balAlt:  '[Outstanding_IDR]',          // fallback with brackets
+  sumSO:   '[SumSO_from_SR]',           // Sum of SO
+};
+
+// Type classification
+function classifyType(val) {
+  val = String(val||'').toLowerCase();
+  if (val.indexOf('usd to be converted') >= 0 || val === 'usd to be converted in idr') return 'USD';
+  if (val.indexOf('idr 2') >= 0 || val === 'idr 2') return 'IDR 2';
+  if (val.indexOf('idr') >= 0) return 'IDR 1';
+  if (val === 'usd') return 'USD';
+  return val.toUpperCase() || 'USD';
 }
 
-// ── DRAG & DROP ──
-const dropZone = document.getElementById('dropZone');
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
-dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag'); handleFile(e.dataTransfer.files[0]); });
+var TYPE_ORDER = ['USD','IDR 1','IDR 2'];
+
+function g(row, key, alt) {
+  var v = row[key];
+  if (v !== undefined && v !== '') return v;
+  if (alt) { v = row[alt]; if (v !== undefined && v !== '') return v; }
+  return '';
+}
+function N(v) { var x=parseFloat(v); return isNaN(x)?0:x; }
+function F(v,d) { var x=parseFloat(v); if(!x&&x!==0)return'-'; if(!x)return'-'; d=d||0; return x.toLocaleString('id-ID',{maximumFractionDigits:d}); }
+function FP(v) { var x=parseFloat(v); if(!x)return'-'; return x.toLocaleString('en-US',{minimumFractionDigits:3,maximumFractionDigits:3}); }
+function mN(m) {
+  var ms=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var p=m.split('-'); return (2000+parseInt(p[1]))*12+ms.indexOf(p[0]);
+}
+function parseDPMonth(val) {
+  if (val===null||val===undefined||val==='') return null;
+  var ms=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  if (val instanceof Date) return ms[val.getMonth()]+'-'+String(val.getFullYear()).slice(-2);
+  var n=parseFloat(val);
+  if (!isNaN(n)&&n>40000&&n<65000) {
+    var d=new Date(new Date(1899,11,30).getTime()+n*86400000);
+    return ms[d.getMonth()]+'-'+String(d.getFullYear()).slice(-2);
+  }
+  var s=String(val).trim();
+  var m2=s.match(/^(\d{4})[\/\-](\d{1,2})/);
+  if (m2){var mo2=parseInt(m2[2])-1;if(mo2>=0&&mo2<12)return ms[mo2]+'-'+m2[1].slice(-2);}
+  var m1=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (m1){var mo=parseInt(m1[2])-1;var yr=m1[3].length===2?'20'+m1[3]:m1[3];if(mo>=0&&mo<12)return ms[mo]+'-'+yr.slice(-2);}
+  if (/^[A-Z][a-z]{2}-\d{2}$/.test(s)) return s;
+  return null;
+}
+
+// Drag drop
+var dz=document.getElementById('dz');
+dz.addEventListener('dragover',function(e){e.preventDefault();dz.classList.add('drag')});
+dz.addEventListener('dragleave',function(){dz.classList.remove('drag')});
+dz.addEventListener('drop',function(e){e.preventDefault();dz.classList.remove('drag');handleFile(e.dataTransfer.files[0])});
 
 function handleFile(file) {
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    const wb = XLSX.read(e.target.result, { type: 'binary' });
-    // Try to find USD sheet
-    const sheetName = wb.SheetNames.find(s => /usd/i.test(s)) || wb.SheetNames[0];
-    const ws = wb.Sheets[sheetName];
-    const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
-    loadData(json);
+  var reader=new FileReader();
+  reader.onload=function(e) {
+    var wb=XLSX.read(e.target.result,{type:'binary'});
+    var names=wb.SheetNames;
+
+    // Find USD and IDR sheets by name or content
+    var usdSheet=names.find(function(n){return /^usd$/i.test(n.trim());}) ||
+                 names.find(function(n){return /usd/i.test(n);});
+    var idrSheet=names.find(function(n){return /^idr$/i.test(n.trim());}) ||
+                 names.find(function(n){return /idr/i.test(n);});
+
+    // Fallback: scan by content
+    if (!usdSheet||!idrSheet) {
+      names.forEach(function(n){
+        var raw=XLSX.utils.sheet_to_json(wb.Sheets[n],{defval:'',header:1});
+        var hi=findHeaderRow(raw);
+        if(hi<0)return;
+        var headers=raw[hi];
+        var hasContractNumUSD=headers.indexOf('Contract[Contract Number USD]')>=0;
+        var hasIDREXW=headers.indexOf('Contract[16. EXW (IDR/KG)1]')>=0;
+        if(hasContractNumUSD&&!usdSheet)usdSheet=n;
+        else if(hasIDREXW&&!idrSheet)idrSheet=n;
+        else if(hi>=0&&!usdSheet)usdSheet=n; // first valid sheet
+      });
+    }
+
+    allRaw=usdSheet?parseSheetByName(wb,usdSheet):[];
+    idrRaw=idrSheet?parseSheetByName(wb,idrSheet):[];
+
+    // Collect products from both sheets
+    var pSet={};
+    allRaw.forEach(function(r){var p=g(r,K.prod,'Product');if(p)pSet[p]=1;});
+    idrRaw.forEach(function(r){var p=g(r,KI.prod,'Product');if(p)pSet[p]=1;});
+    products=Object.keys(pSet).sort();
+
+    if(products.length===0){
+      alert('Tidak ada data ditemukan. Pastikan file punya sheet USD dan IDR dengan kolom Contract[6. CUSTOMER NAME] dll');
+      return;
+    }
+    buildTabs();
+    switchProd(products[0]);
   };
   reader.readAsBinaryString(file);
 }
 
-function loadDemo() {
-  // Demo data based on screenshots
-  const months = ['Jan-25','Feb-25','Mar-25','Apr-25','May-25','Jun-25','Jul-25','Aug-25','Sep-25','Oct-25','Nov-25','Dec-25','Jan-26','Feb-26','Mar-26'];
-  const demo = [
-    { customer:'CV IKA RAYA SENTAUSA', contractNum:'011/SC/GC/II/2026', sales:'EMILIA', unitPrice:0.55, exw:514.34, scQty:66, volFix:44, outstanding:22, status:'Completed', product:'GLUCOSE', custGroup:'SENTAUSA', monthQtys: {'Jan-26':22,'Feb-26':22,'Mar-26':22} },
-    { customer:'PT ALAM MANIS INDONESIA', contractNum:'124/SC/GC/VIII/2024', sales:'EMILIA', unitPrice:0.432, exw:432, scQty:550, volFix:100, outstanding:450, status:'Active', product:'GLUCOSE', custGroup:'ALAM MANIS', monthQtys: {'Feb-25':183,'Mar-25':183,'Apr-25':183} },
-    { customer:'PT AROMA KOPIKRIM INDONESIA', contractNum:'029/SC/GC/IV/2025', sales:'EMILIA', unitPrice:0.42, exw:396.23, scQty:4000, volFix:1740, outstanding:2260, status:'Active', product:'GLUCOSE', custGroup:'AROMA GROUP', monthQtys: {'Aug-25':667,'Sep-25':667,'Oct-25':667,'Nov-25':667,'Dec-25':667,'Jan-26':667} },
-    { customer:'PT DIAMOND COLD STORAGE', contractNum:'013/SC/GC/II/2026', sales:'RINA', unitPrice:0.49, exw:479.97, scQty:150, volFix:50, outstanding:100, status:'Active', product:'GLUCOSE', custGroup:'DIAMOND GROUP', monthQtys: {'Jan-26':50,'Feb-26':50,'Mar-26':50} },
-    { customer:'PT FONUSA AGUNG MULIA', contractNum:'059/SC/GC/VIII/2025', sales:'RINA', unitPrice:0.483, exw:475.68, scQty:2745, volFix:400, outstanding:2345, status:'Active', product:'GLUCOSE', custGroup:'FONUSA GROUP', monthQtys: {'Sep-25':305,'Oct-25':305,'Nov-25':305,'Dec-25':305,'Jan-26':305,'Feb-26':305,'Mar-26':305,'Apr-26':305,'May-26':305} },
-    { customer:'PT KALDU SARI NABATI INDONESIA', contractNum:'006/SC/GC/I/2026', sales:'RINA', unitPrice:0.59, exw:565.0, scQty:200, volFix:100, outstanding:200, status:'Active', product:'GLUCOSE', custGroup:'KALDU GROUP', monthQtys: {'Nov-25':100,'Dec-25':100} },
-    { customer:'PT KALDU SARI NABATI INDONESIA', contractNum:'045/SC/GC/VII/2025', sales:'MARIO', unitPrice:0.48, exw:464.74, scQty:250, volFix:49, outstanding:201, status:'Active', product:'GLUCOSE', custGroup:'KALDU GROUP', monthQtys: {'Feb-25':90,'Aug-25':80,'Sep-25':80} },
-    { customer:'PT KALDU SARI NABATI INDONESIA', contractNum:'055/SC/GC/VIII/2025', sales:'RINA', unitPrice:0.477, exw:462.4, scQty:250, volFix:0, outstanding:250, status:'Active', product:'GLUCOSE', custGroup:'KALDU GROUP', monthQtys: {'Nov-25':80,'Dec-25':90,'Jan-26':80} },
-    { customer:'PT KALDU SARI NABATI INDONESIA', contractNum:'057/SC/GC/VIII/2025', sales:'RINA', unitPrice:0.555, exw:529.98, scQty:375, volFix:136, outstanding:239, status:'Active', product:'GLUCOSE', custGroup:'KALDU GROUP', monthQtys: {'Sep-25':87,'Oct-25':96,'Nov-25':96,'Dec-25':96} },
-    { customer:'PT KALDU SARI NABATI INDONESIA', contractNum:'076/SC/GC/XII/2025', sales:'RINA', unitPrice:0.53, exw:514.99, scQty:100, volFix:75, outstanding:25, status:'Active', product:'GLUCOSE', custGroup:'KALDU GROUP', monthQtys: {'Oct-25':100} },
-    { customer:'PT KALDU SARI NABATI INDONESIA', contractNum:'077/SC/GC/XII/2025', sales:'RINA', unitPrice:0.575, exw:550.0, scQty:150, volFix:144, outstanding:6, status:'Active', product:'GLUCOSE', custGroup:'KALDU GROUP', monthQtys: {'Nov-25':150} },
-    { customer:'PT KIEVIT INDONESIA', contractNum:'002/SC/GC/I/2026', sales:'RINA', unitPrice:0.485, exw:459.97, scQty:500, volFix:90, outstanding:410, status:'Active', product:'GLUCOSE', custGroup:'KIEVIT GROUP', monthQtys: {'Jan-26':50,'Feb-26':50,'Mar-26':50,'Apr-26':50,'May-26':50,'Jun-26':50,'Jul-26':50,'Aug-26':50,'Sep-26':100} },
-    { customer:'PT LAUTAN NATURAL KRIMERINDO', contractNum:'036/SC/GC/VI/2025', sales:'EMILIA', unitPrice:0.41, exw:385.43, scQty:3000, volFix:2550, outstanding:450, status:'Active', product:'GLUCOSE', custGroup:'LAUTAN GROUP', monthQtys: {'Aug-25':500,'Sep-25':500,'Oct-25':500,'Nov-25':500,'Dec-25':500,'Jan-26':500} },
-    { customer:'WINGS GROUP', contractNum:'026/SC/GC/IV/2025', sales:'RINA', unitPrice:0.372, exw:372, scQty:9960, volFix:0, outstanding:7040, status:'Active', product:'GLUCOSE', custGroup:'WINGS GROUP', monthQtys: {'Jun-25':2429,'Jul-25':2429,'Aug-25':2429,'Sep-25':2429} },
-    { customer:'WINGS GROUP', contractNum:'053/SC/GC/VIII/2025', sales:'RINA', unitPrice:0.379, exw:379, scQty:8730, volFix:0, outstanding:3270, status:'Active', product:'GLUCOSE', custGroup:'WINGS GROUP', monthQtys: {'Sep-25':1000,'Oct-25':1000,'Nov-25':1000,'Dec-25':270} },
-  ];
+function parseSheetByName(wb,sheetName){
+  var raw=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{defval:'',header:1});
+  var hi=findHeaderRow(raw);
+  if(hi<0)return[];
+  return parseSheet(raw,hi);
+}
 
-  // Flatten to row format
-  const allMonths = ['Jan-25','Feb-25','Mar-25','Apr-25','May-25','Jun-25','Jul-25','Aug-25','Sep-25','Oct-25','Nov-25','Dec-25','Jan-26','Feb-26','Mar-26','Apr-26','May-26','Jun-26','Jul-26','Aug-26','Sep-26'];
-  const flat = demo.map(d => {
-    const row = {
-      'Contract[6. CUSTOMER NAME]': d.customer,
-      'Contract[1. Contract number]': d.contractNum,
-      'Contract[8. Sales Name]': d.sales,
-      'Contract[15. Unit Price]': d.unitPrice,
-      'Contract[17. EXW (USD/MT)1]': d.exw,
-      'SC Qty': d.scQty,
-      'Vol Fixations': d.volFix,
-      'Outstanding': d.outstanding,
-      'Contract[30. STATUS CONTRACT]': d.status,
-      'Contract[10. Product]': d.product,
-      'Customer Group': d.custGroup,
-    };
-    allMonths.forEach(m => { row[m] = d.monthQtys[m] || 0; });
-    return row;
-  });
+function findHeaderRow(raw) {
+  for (var i=0;i<Math.min(10,raw.length);i++) {
+    var joined=raw[i].join('|');
+    if (joined.indexOf('Contract[')>=0||joined.indexOf('CUSTOMER NAME')>=0) return i;
+  }
+  return -1;
+}
 
-  window._monthCols = allMonths;
-  loadData(flat);
+function parseSheet(raw,headerIdx) {
+  var headers=raw[headerIdx];
+  return raw.slice(headerIdx+1)
+    .filter(function(r){return r.some(function(v){return v!==''&&v!==null&&v!==undefined;});})
+    .map(function(r){
+      var obj={};
+      headers.forEach(function(h,i){if(h!==null&&h!==undefined&&h!=='')obj[h]=(r[i]!==undefined&&r[i]!==null)?r[i]:'';});
+      return obj;
+    });
 }
 
 function loadData(data) {
-  allData = data;
+  allRaw=data;
+  idrRaw=[];
+  var pSet={};
+  data.forEach(function(r){var p=g(r,K.prod,'Product');if(p)pSet[p]=1;});
+  products=Object.keys(pSet).sort();
+  buildTabs();
+  if (products.length>0) switchProd(products[0]);
+}
 
-  // Detect month columns: columns that look like "Mon-YY"
-  const cols = Object.keys(data[0] || {});
-  if (!window._monthCols) {
-    window._monthCols = cols.filter(c => /^[A-Z][a-z]{2}-\d{2}$/.test(c));
-  }
+function buildTabs() {
+  var tabs=document.getElementById('prodTabs');
+  tabs.innerHTML='';
+  products.forEach(function(p) {
+    var el=document.createElement('div');
+    el.className='prod-tab';
+    el.textContent=p.replace('_',' ');
+    el.setAttribute('data-prod',p);
+    el.onclick=function(){switchProd(p);};
+    tabs.appendChild(el);
+  });
+}
 
-  // Populate filters
-  populateFilter('fStatus', data.map(r => pick(r, COL.status)));
-  populateFilter('fProduct', data.map(r => pick(r, COL.product)));
-  populateFilter('fSales', data.map(r => pick(r, COL.sales)));
-  populateFilter('fGroup', data.map(r => pick(r, COL.custGroup)));
-
+function switchProd(p) {
+  curProd=p;
+  document.querySelectorAll('.prod-tab').forEach(function(t){
+    t.classList.toggle('active',t.getAttribute('data-prod')===p);
+  });
+  // Get rows for this product
+  var rows=allRaw.filter(function(r){return g(r,K.prod,'Product')===p;});
+  populateFilters(rows);
   document.getElementById('uploadSection').classList.add('hidden');
   document.getElementById('appSection').classList.remove('hidden');
-  document.getElementById('exportBtn1').style.display = '';
-  document.getElementById('exportBtn2').style.display = '';
+  sortCol=null;
   render();
 }
 
-function populateFilter(id, vals) {
-  const el = document.getElementById(id);
-  const unique = [...new Set(vals.filter(Boolean))].sort();
-  el.innerHTML = '<option value="">All</option>' + unique.map(v => `<option>${v}</option>`).join('');
+function getUSDRows() {
+  return allRaw.filter(function(r){
+    if(g(r,K.prod,'Product')!==curProd) return false;
+    var stat=String(g(r,K.stat)||'').toLowerCase().trim();
+    // Only Progress/Order rows — NOT Cancelled/Completed/Closed
+    return stat!=='cancelled' && stat!=='completed' && stat!=='closed' &&
+           stat.indexOf('cancel')<0 && stat.indexOf('complet')<0 && stat.indexOf('clos')<0;
+  });
+}
+
+function getIDR1Rows() {
+  // IDR 1: keep Order and Progress — exclude Cancelled/Completed/Closed
+  var rows = idrRaw.filter(function(r){
+    if(g(r,KI.prod,'Product')!==curProd) return false;
+    var stat=String(g(r,KI.stat)||'').toLowerCase().trim();
+    // Include: order, progress, or anything that's NOT cancelled/completed/closed
+    var isBad = stat==='cancelled'||stat==='completed'||stat==='closed'||
+                stat.indexOf('cancel')>=0||stat.indexOf('complet')>=0||stat.indexOf('clos')>=0;
+    return !isBad;
+  }).sort(function(a,b){
+    return String(g(a,KI.cust)||'').localeCompare(String(g(b,KI.cust)||''));
+  });
+  return rows;
+}
+
+function getIDR2Rows() {
+  // IDR sheet: Cancelled/Completed/Closed with SO not 0
+  return idrRaw.filter(function(r){
+    if(g(r,KI.prod,'Product')!==curProd) return false;
+    var stat=String(g(r,KI.stat)||'').toLowerCase();
+    var isBadStatus=stat==='cancelled'||stat==='completed'||stat==='closed'||
+                    stat.indexOf('cancel')>=0||stat.indexOf('complet')>=0||stat.indexOf('clos')>=0;
+    if(!isBadStatus) return false;
+    // SumSO_from_SR not 0 or blank
+    var so=N(g(r,KI.sumSO));  // [SumSO_from_SR]
+    return so!==0;
+  }).sort(function(a,b){
+    return String(g(a,KI.cust)||'').localeCompare(String(g(b,KI.cust)||''));
+  });
+}
+
+function getRows() { return getUSDRows(); }
+
+function populateFilters(rows) {
+  function pop(id,vals) {
+    var el=document.getElementById(id);
+    var cur=el.value;
+    var uniq=[];
+    vals.forEach(function(v){if(v&&uniq.indexOf(v)<0)uniq.push(v);});
+    uniq.sort();
+    el.innerHTML='<option value="">All</option>'+uniq.map(function(v){return'<option'+(v===cur?' selected':'')+'>'+v+'</option>';}).join('');
+  }
+  pop('fS', rows.map(function(r){return g(r,K.stat,'Status');}));
+  // Sales from USD + IDR combined
+  var allSales=rows.map(function(r){return g(r,K.sales,'Sales Name');});
+  idrRaw.filter(function(r){return g(r,KI.prod)===curProd;}).forEach(function(r){
+    var s=g(r,KI.sales,'Sales Name');if(s)allSales.push(s);
+  });
+  pop('fSl', allSales);
 }
 
 function getFiltered() {
-  const s = v => document.getElementById(v).value;
-  const search = s('searchBox').toLowerCase();
-  return allData.filter(row => {
-    if (s('fStatus') && pick(row, COL.status) !== s('fStatus')) return false;
-    if (s('fProduct') && pick(row, COL.product) !== s('fProduct')) return false;
-    if (s('fSales') && pick(row, COL.sales) !== s('fSales')) return false;
-    if (s('fGroup') && pick(row, COL.custGroup) !== s('fGroup')) return false;
-    if (search) return Object.values(row).some(v => String(v).toLowerCase().includes(search));
+  var fS =document.getElementById('fS').value;
+  var fSl=document.getElementById('fSl').value;
+  var fSC=document.getElementById('fSC').value.toLowerCase().trim();
+  var q  =document.getElementById('sq').value.toLowerCase();
+  return getUSDRows().filter(function(row){
+    if(fS &&g(row,K.stat)!==fS) return false;
+    if(fSl&&g(row,K.sales)!==fSl) return false;
+    if(fSC){var sc=String(g(row,K.scNoAlt)||g(row,K.scNo)||'').toLowerCase();if(sc.indexOf(fSC)<0)return false;}
+    if(q) return Object.values(row).some(function(v){return String(v).toLowerCase().indexOf(q)>=0;});
     return true;
   });
 }
 
-function num(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
-function fmt(v, dec=2) {
-  const n = parseFloat(v);
-  if (isNaN(n) || n === 0) return '-';
-  return n.toLocaleString('id-ID', { minimumFractionDigits: dec > 2 ? 0 : 0, maximumFractionDigits: dec });
-}
-function fmtPrice(v) {
-  const n = parseFloat(v);
-  if (isNaN(n) || n === 0) return '-';
-  return n.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+function filterBySearch(rows, salesKey) {
+  var fSl=document.getElementById('fSl').value;
+  var fSC=document.getElementById('fSC').value.toLowerCase().trim();
+  var q  =document.getElementById('sq').value.toLowerCase();
+  return rows.filter(function(row){
+    if(fSl&&g(row,salesKey)!==fSl) return false;
+    if(fSC){var sc=String(g(row,KI.scNo)||'').toLowerCase();if(sc.indexOf(fSC)<0)return false;}
+    if(q) return Object.values(row).some(function(v){return String(v).toLowerCase().indexOf(q)>=0;});
+    return true;
+  });
 }
 
-let _sortedData = [];
+// Global pivot counts — set by renderTable, read by renderStats
+var _pivotCounts = {usd:0, idr1:0, idr2:0};
 
 function render() {
-  let data = getFiltered();
-  if (sortCol !== null) {
-    data = [...data].sort((a, b) => {
-      const av = a[sortCol] ?? '', bv = b[sortCol] ?? '';
-      const an = parseFloat(av), bn = parseFloat(bv);
-      if (!isNaN(an) && !isNaN(bn)) return (an - bn) * sortDir;
-      return String(av).localeCompare(String(bv)) * sortDir;
-    });
-  }
-  _sortedData = data;
-
-  renderStats(data);
-  if (currentPivot === 1) renderPivot1(data);
-  else renderPivot2(data);
+  var data=getFiltered();
+  renderTable(data);   // sets _pivotCounts
+  renderStats(data);   // reads _pivotCounts
 }
 
 function renderStats(data) {
-  const months = window._monthCols || [];
-  const totalSC = data.reduce((s, r) => s + num(pick(r, COL.scQty)), 0);
-  const totalVol = data.reduce((s, r) => s + num(pick(r, COL.volFix)), 0);
-  const totalOut = data.reduce((s, r) => s + num(pick(r, COL.outstanding)), 0);
-  const avgPrice = data.length ? data.reduce((s,r)=>s+num(pick(r,COL.unitPrice)),0)/data.length : 0;
+  // Use pivot counts from renderTable (set via _pivotCounts global)
+  var usdCount=_pivotCounts.usd;
+  var idr1Count=_pivotCounts.idr1;
+  var idr2Count=_pivotCounts.idr2;
 
-  document.getElementById('statsRow').innerHTML = `
-    <div class="stat-cell"><span class="stat-label">Contracts</span><span class="stat-val blue">${data.length}</span></div>
-    <div class="stat-cell"><span class="stat-label">Total SC Qty (mt)</span><span class="stat-val">${totalSC.toLocaleString('id-ID')}</span></div>
-    <div class="stat-cell"><span class="stat-label">Vol Fixations (mt)</span><span class="stat-val amber">${totalVol.toLocaleString('id-ID')}</span></div>
-    <div class="stat-cell"><span class="stat-label">Outstanding (mt)</span><span class="stat-val red">${totalOut.toLocaleString('id-ID')}</span></div>
-    <div class="stat-cell"><span class="stat-label">Avg Unit Price ($/kg)</span><span class="stat-val green">${avgPrice.toFixed(3)}</span></div>
-  `;
+  // Outstanding = sum of Sum SC+SO
+  var usdOut=0,i1Out=0,i2Out=0;
+  var uT={};
+  getUSDRows().forEach(function(r){
+    var sc=g(r,K.scNoAlt)||g(r,K.scNo);if(!sc)return;
+    if(!uT[sc])uT[sc]={qty:0,vf:0};
+    uT[sc].qty+=N(g(r,K.qty));uT[sc].vf+=N(g(r,K.vf));
+  });
+  Object.keys(uT).forEach(function(sc){usdOut+=uT[sc].qty-uT[sc].vf;});
+  var i1T={};
+  getIDR1Rows().forEach(function(r){
+    var sc=g(r,KI.scNo);if(!sc)return;
+    if(!i1T[sc])i1T[sc]={bal:0,so:0};
+    i1T[sc].bal=Math.max(i1T[sc].bal,N(g(r,KI.bal))||N(g(r,KI.balAlt)));
+    i1T[sc].so=Math.max(i1T[sc].so,N(g(r,KI.sumSO)));
+  });
+  Object.keys(i1T).forEach(function(sc){i1Out+=i1T[sc].bal+i1T[sc].so;});
+  var i2T={};
+  getIDR2Rows().forEach(function(r){
+    var sc=g(r,KI.scNo);if(!sc)return;
+    i2T[sc]=Math.max(i2T[sc]||0,N(g(r,KI.sumSO)));
+  });
+  Object.keys(i2T).forEach(function(sc){i2Out+=i2T[sc];});
+
+  var avgP=getUSDRows().length?getUSDRows().reduce(function(s,r){return s+N(g(r,K.up));},0)/getUSDRows().length:0;
+  var outstanding=_pivotCounts.outstanding||0;
+  document.getElementById('stats').innerHTML=
+    '<div class="stat-cell"><span class="stat-label">USD Contracts</span><span class="stat-val blue">'+usdCount+'</span></div>'+
+    '<div class="stat-cell"><span class="stat-label">IDR 1</span><span class="stat-val amber">'+idr1Count+'</span></div>'+
+    '<div class="stat-cell"><span class="stat-label">IDR 2</span><span class="stat-val green">'+idr2Count+'</span></div>'+
+    '<div class="stat-cell"><span class="stat-label">Outstanding (mt)</span><span class="stat-val red">'+outstanding.toLocaleString('id-ID')+'</span></div>'+
+    '<div class="stat-cell"><span class="stat-label">Avg Price ($/kg)</span><span class="stat-val">'+Math.round(avgP).toLocaleString('id-ID')+'</span></div>';
 }
 
-// ── PIVOT 1: SUMMARY ──
-function renderPivot1(data) {
-  const cols = [
-    { key: 'customer', label: 'Customer Name', w: 220 },
-    { key: 'contractNum', label: 'Contract Number', w: 180 },
-    { key: 'sales', label: 'Sales', w: 90 },
-    { key: 'product', label: 'Product', w: 120 },
-    { key: 'status', label: 'Status', w: 110 },
-    { key: 'unitPrice', label: 'Unit Price ($/KG)', w: 100, num: true },
-    { key: 'exw', label: 'EXW ($/MT)', w: 90, num: true },
-    { key: 'scQty', label: 'SC Qty (mt)', w: 90, num: true },
-    { key: 'volFix', label: 'Vol Fixations (mt)', w: 110, num: true },
-    { key: 'outstanding', label: 'Outstanding (mt)', w: 110, num: true },
+
+
+
+function renderContractRow(scNo,e,typeLabel,allMonths,pastMo,sep){
+  var row=e.row;
+  var cust=g(row,K.cust)||'-';
+  var sales=g(row,K.sales)||'-';
+  var up=N(g(row,K.up));
+  var exw=N(g(row,K.exw));
+  var bal=e.qty-e.vf;
+  var sched=allMonths.reduce(function(s,m){return s+(e.mo[m]||0);},0);
+  var vari=bal-sched;
+  var bkQ=pastMo.reduce(function(s,m){return s+(e.mo[m]||0);},0);
+  var isBk=bkQ>0;
+  var rowT=allMonths.reduce(function(s,m){return s+(e.mo[m]||0);},0);
+  var mCells=allMonths.length?
+    allMonths.map(function(m,i){
+      var v=e.mo[m]||0;
+      return '<td class="n '+(v>0?(mN(m)<curNum?'nr':'nb'):'nd')+'"'+(i===0?' style="'+sep+'"':'')+'>'+
+        (v>0?v.toLocaleString('id-ID'):'-')+'</td>';
+    }).join(''):'';
+  var totCell=allMonths.length?
+    '<td class="n '+(rowT>0?'nb':'nd')+'" style="'+sep+'">'+( rowT>0?rowT.toLocaleString('id-ID'):'-')+'</td>':'';
+  return '<tr>'+
+    '<td><span class="btyp">'+typeLabel+'</span></td>'+
+    '<td style="font-weight:500">'+cust+'</td>'+
+    '<td style="font-family:var(--mono);font-size:11px;color:var(--text2)">'+scNo+'</td>'+
+    '<td style="font-weight:600;color:var(--accent2)">'+sales+'</td>'+
+    '<td class="n nb">'+FP(up)+'</td>'+
+    '<td class="n nd">—</td>'+
+    '<td class="n">'+F(exw,2)+'</td>'+
+    '<td class="n">'+F(e.qty,2)+'</td>'+
+    '<td class="n nb">'+F(bal,2)+'</td>'+
+    '<td class="n nd">—</td>'+
+    '<td class="n" style="font-weight:600">'+F(bal,2)+'</td>'+
+    '<td class="n '+(vari>0?'na':vari<0?'nr':'nd')+'">'+( vari?F(vari,2):'-')+'</td>'+
+    '<td style="text-align:center"><span class="badge '+(isBk?'bbl':'bok')+'">'+(isBk?'BACKLOG':'OK')+'</span></td>'+
+    '<td class="n '+(isBk?'nr':'nd')+'">'+( isBk?F(bkQ,2):'-')+'</td>'+
+    totCell+mCells+'</tr>';
+}
+
+function buildSubtotal(cOrder,cMap,allMonths){
+  var now2=new Date();
+  var cs=now2.toLocaleString('en-US',{month:'short'})+'-'+String(now2.getFullYear()).slice(-2);
+  var cn=mN(cs);
+  var pm=allMonths.filter(function(m){return mN(m)<cn;});
+  var sc=0,bal=0,vari=0,bk=0,mo={};
+  allMonths.forEach(function(m){mo[m]=0;});
+  cOrder.forEach(function(scNo){
+    var e=cMap[scNo];
+    var b=e.qty-e.vf;
+    var sch=allMonths.reduce(function(s,m){return s+(e.mo[m]||0);},0);
+    sc+=e.qty;bal+=b;vari+=(b-sch);bk+=pm.reduce(function(s,m){return s+(e.mo[m]||0);},0);
+    allMonths.forEach(function(m){mo[m]+=(e.mo[m]||0);});
+  });
+  return{sc:sc,bal:bal,vari:vari,bk:bk,mo:mo};
+}
+
+function switchSubTab(tab) {
+  curSubTab = tab;
+  var main = document.getElementById('stab-main');
+  var adj  = document.getElementById('stab-adj');
+  if (main) {
+    main.style.borderBottomColor = tab==='main' ? 'var(--accent)' : 'transparent';
+    main.style.color = tab==='main' ? 'var(--accent)' : 'var(--text2)';
+    adj.style.borderBottomColor = tab==='adjusted' ? 'var(--accent)' : 'transparent';
+    adj.style.color = tab==='adjusted' ? 'var(--accent)' : 'var(--text2)';
+  }
+  render();
+}
+
+// Adjusted months: trim FIFO to match target qty (Sum SC+SO)
+// months = {Jan-25: 300, Mar-26: 150, ...}, target = sum sc+so
+// Returns new months object with FIFO trimming
+function adjustMonths(mo, target, allMonths) {
+  if (target <= 0) return {};
+  var result = {};
+  // Copy months sorted chronologically
+  var sorted = allMonths.filter(function(m){ return (mo[m]||0) > 0; });
+  var remaining = target;
+  // FIFO: fill from earliest month
+  sorted.forEach(function(m) {
+    if (remaining <= 0) { result[m] = 0; return; }
+    var v = mo[m] || 0;
+    if (v <= remaining) {
+      result[m] = v;
+      remaining -= v;
+    } else {
+      result[m] = remaining;
+      remaining = 0;
+    }
+  });
+  return result;
+}
+
+var curNum; // set in renderTable
+function renderTable(data) {
+  var now=new Date();
+  var curStr=now.toLocaleString('en-US',{month:'short'})+'-'+String(now.getFullYear()).slice(-2);
+  curNum=mN(curStr);
+  var sep='border-left:3px solid #3a78c9';
+
+  // ── STEP 1: Build month range Jan-25 to Dec-26 + any extra from data ──
+  var monthSet={};
+  // Hardcode Jan-25 through Dec-26
+  var ms2=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  [25,26].forEach(function(yr){ms2.forEach(function(m){var k=m+'-'+yr;monthSet[k]=mN(k);});});
+  // Also add any months from actual data beyond Dec-26
+  function addMonth(val){var ml=parseDPMonth(val);if(ml)monthSet[ml]=mN(ml);}
+  data.forEach(function(row){addMonth(g(row,K.dpMonth));});
+  getIDR1Rows().forEach(function(row){addMonth(g(row,KI.dpMonth));});
+  getIDR2Rows().forEach(function(row){addMonth(g(row,KI.dpMonth));});
+
+  var allMonths=Object.keys(monthSet).sort(function(a,b){return monthSet[a]-monthSet[b];});
+  var pastMo=allMonths.filter(function(m){return mN(m)<curNum;});
+
+  // ── STEP 2: Group USD rows by type ──
+  var typeGroups={};
+  TYPE_ORDER.forEach(function(t){typeGroups[t]=[];});
+  data.forEach(function(row){
+    var t=classifyType(g(row,K.type,'Type'));
+    if(!typeGroups[t])typeGroups[t]=[];
+    typeGroups[t].push(row);
+  });
+
+  function pivotRows(rows,scKey,qtyKey,vfKey,dpKey){
+    var cMap={},cOrder=[];
+    rows.forEach(function(row){
+      // Prioritize Contract[1. Contract number] (scNoAlt) as it's the true SC Number
+      var scNo=g(row,K.scNoAlt)||g(row,scKey)||'?';
+      var ml=parseDPMonth(g(row,dpKey));
+      var qty=N(g(row,qtyKey));
+      var vf=N(g(row,vfKey||''));
+      if(!cMap[scNo]){cOrder.push(scNo);cMap[scNo]={row:row,qty:0,vf:0,mo:{}};}
+      cMap[scNo].qty+=qty;
+      cMap[scNo].vf+=vf;
+      if(ml)cMap[scNo].mo[ml]=(cMap[scNo].mo[ml]||0)+qty;
+    });
+    return{cMap:cMap,cOrder:cOrder};
+  }
+
+  // ── STEP 3: Build HEADER (now all months known) ──
+  var fh=[
+    {l:'Type',w:160},{l:'Customer Name',w:200},{l:'SC Number',w:165},{l:'Sales Name',w:85},
+    {l:'Unit Price',w:110,r:1},{l:'EXW IDR Price',w:100,r:1},{l:'EXW USD Price',w:100,r:1},
+    {l:'SC Qty (mt)',w:95,r:1},{l:'Balance Contract',w:125,r:1},{l:'Sum of SO',w:85,r:1},
+    {l:'Sum SC+SO',w:95,r:1},{l:'Variance',w:85,r:1},{l:'Backlog',w:85},{l:'Backlog Qty',w:95,r:1},
   ];
-
-  // HEAD
-  document.getElementById('tHead').innerHTML = `<tr>${cols.map(c =>
-    `<th onclick="doSort('${c.key}')" class="${sortCol===c.key?'sorted':''}" style="min-width:${c.w||100}px">
-      ${c.label}<span class="sort-icon">${sortCol===c.key?(sortDir===1?'▲':'▼'):'⇅'}</span>
-    </th>`
-  ).join('')}</tr>`;
-
-  // BODY
-  let html = '';
-  data.forEach(row => {
-    const status = pick(row, COL.status);
-    const badgeCls = /active|outstanding/i.test(status) ? 'badge-backlog' :
-                     /complet/i.test(status) ? 'badge-completed' :
-                     /cancel/i.test(status) ? 'badge-cancelled' : 'badge-ok';
-    const out = num(pick(row, COL.outstanding));
-    html += `<tr>
-      <td>${pick(row, COL.customer) || '-'}</td>
-      <td style="font-family:var(--mono);font-size:11px;color:var(--text2)">${pick(row, COL.contractNum) || '-'}</td>
-      <td>${pick(row, COL.sales) || '-'}</td>
-      <td style="color:var(--blue);font-size:11px">${pick(row, COL.product) || '-'}</td>
-      <td><span class="badge ${badgeCls}">${status || '-'}</span></td>
-      <td class="num">${fmtPrice(pick(row, COL.unitPrice))}</td>
-      <td class="num">${fmt(pick(row, COL.exw))}</td>
-      <td class="num">${fmt(pick(row, COL.scQty), 0)}</td>
-      <td class="num">${fmt(pick(row, COL.volFix), 0)}</td>
-      <td class="num ${out > 0 ? 'high' : 'zero'}">${fmt(out, 0)}</td>
-    </tr>`;
-  });
-  document.getElementById('tBody').innerHTML = html || `<tr><td colspan="10" class="empty-state">Tidak ada data</td></tr>`;
-
-  // FOOT
-  const totSC = data.reduce((s,r)=>s+num(pick(r,COL.scQty)),0);
-  const totVol = data.reduce((s,r)=>s+num(pick(r,COL.volFix)),0);
-  const totOut = data.reduce((s,r)=>s+num(pick(r,COL.outstanding)),0);
-  const avgPrice = data.length ? data.reduce((s,r)=>s+num(pick(r,COL.unitPrice)),0)/data.length : 0;
-  const avgEXW = data.length ? data.reduce((s,r)=>s+num(pick(r,COL.exw)),0)/data.length : 0;
-
-  document.getElementById('tFoot').innerHTML = `
-    <tr>
-      <td colspan="5">GRAND TOTAL — ${data.length} contracts</td>
-      <td class="avg-cell">${fmtPrice(avgPrice)}</td>
-      <td class="avg-cell">${fmt(avgEXW)}</td>
-      <td>${totSC.toLocaleString('id-ID')}</td>
-      <td>${totVol.toLocaleString('id-ID')}</td>
-      <td>${totOut.toLocaleString('id-ID')}</td>
-    </tr>
-    <tr class="avg-row">
-      <td colspan="5">AVG</td>
-      <td>${fmtPrice(avgPrice)}</td>
-      <td>${fmt(avgEXW)}</td>
-      <td>${data.length ? (totSC/data.length).toFixed(1) : '-'}</td>
-      <td>${data.length ? (totVol/data.length).toFixed(1) : '-'}</td>
-      <td>${data.length ? (totOut/data.length).toFixed(1) : '-'}</td>
-    </tr>`;
-}
-
-// ── PIVOT 2: QTY PER MONTH ──
-function renderPivot2(data) {
-  const months = window._monthCols || [];
-  const now = new Date();
-  const currentMonthStr = now.toLocaleString('en-US', {month:'short'}) + '-' + String(now.getFullYear()).slice(-2);
-
-  const fixedCols = ['Customer Name', 'Contract Number', 'Sales'];
-
-  // HEAD
-  const fixedHead = fixedCols.map((c,i) => `<th onclick="doSort('f${i}')" style="min-width:${i===0?200:150}px">${c}</th>`).join('');
-  const monthHead = months.map(m => {
-    const isRecent = m >= currentMonthStr;
-    return `<th class="month-col${isRecent?' recent':''}">${m}</th>`;
+  var hFix=fh.map(function(c){
+    return '<th style="min-width:'+c.w+'px'+(c.r?';text-align:right':'')+'">' + c.l + '</th>';
   }).join('');
-  document.getElementById('tHead').innerHTML = `<tr>${fixedHead}<th class="month-col" style="min-width:80px">Total</th>${monthHead}</tr>`;
-
-  // BODY
-  let html = '';
-  data.forEach(row => {
-    const monthVals = months.map(m => num(row[m]));
-    const total = monthVals.reduce((a,b)=>a+b,0);
-    const monthCells = monthVals.map(v =>
-      `<td class="num ${v>0?'high':'zero'}">${v>0?v.toLocaleString('id-ID'):'-'}</td>`
-    ).join('');
-    html += `<tr>
-      <td>${pick(row, COL.customer) || '-'}</td>
-      <td style="font-family:var(--mono);font-size:11px;color:var(--text2)">${pick(row, COL.contractNum) || '-'}</td>
-      <td>${pick(row, COL.sales) || '-'}</td>
-      <td class="num ${total>0?'high':''}">${total>0?total.toLocaleString('id-ID'):'-'}</td>
-      ${monthCells}
-    </tr>`;
-  });
-  document.getElementById('tBody').innerHTML = html || `<tr><td colspan="${3+months.length+1}" class="empty-state">Tidak ada data</td></tr>`;
-
-  // FOOT totals
-  const monthTotals = months.map(m => data.reduce((s,r)=>s+num(r[m]),0));
-  const grandTotal = monthTotals.reduce((a,b)=>a+b,0);
-  const totalCells = monthTotals.map(v => `<td>${v>0?v.toLocaleString('id-ID'):'-'}</td>`).join('');
-  const avgMonths = months.map(m => {
-    const vals = data.map(r=>num(r[m])).filter(v=>v>0);
-    return vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length) : 0;
-  });
-  const avgCells = avgMonths.map(v => `<td>${v>0?v.toFixed(1):'-'}</td>`).join('');
-
-  document.getElementById('tFoot').innerHTML = `
-    <tr>
-      <td colspan="3">GRAND TOTAL — ${data.length} contracts</td>
-      <td>${grandTotal.toLocaleString('id-ID')}</td>
-      ${totalCells}
-    </tr>
-    <tr class="avg-row">
-      <td colspan="3">AVG (non-zero months)</td>
-      <td>-</td>
-      ${avgCells}
-    </tr>`;
-}
-
-function doSort(col) {
-  if (sortCol === col) sortDir *= -1;
-  else { sortCol = col; sortDir = 1; }
-  render();
-}
-
-function switchPage(p) {
-  currentPage = p;
-  document.querySelectorAll('.page-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&p==='usd')||(i===1&&p==='idr')));
-  // For now, same data — in full version, filter by type
-  if (allData.length) render();
-}
-
-function switchPivot(n) {
-  currentPivot = n;
-  document.getElementById('ptab1').classList.toggle('active', n===1);
-  document.getElementById('ptab2').classList.toggle('active', n===2);
-  sortCol = null;
-  render();
-}
-
-// ── EXPORT ──
-function exportPivot1() {
-  const data = getFiltered();
-  const rows = data.map(r => ({
-    'Customer Name': pick(r, COL.customer),
-    'Contract Number': pick(r, COL.contractNum),
-    'Sales Name': pick(r, COL.sales),
-    'Product': pick(r, COL.product),
-    'Status': pick(r, COL.status),
-    'Customer Group': pick(r, COL.custGroup),
-    'Unit Price ($/KG)': num(pick(r, COL.unitPrice)),
-    'EXW ($/MT)': num(pick(r, COL.exw)),
-    'SC Qty (mt)': num(pick(r, COL.scQty)),
-    'Vol Fixations (mt)': num(pick(r, COL.volFix)),
-    'Outstanding (mt)': num(pick(r, COL.outstanding)),
-  }));
-
-  // Totals & avg row
-  const totals = { 'Customer Name': 'GRAND TOTAL', 'Contract Number': '', 'Sales Name': '', 'Product': '', 'Status': data.length + ' contracts', 'Customer Group': '' };
-  ['Unit Price ($/KG)','EXW ($/MT)','SC Qty (mt)','Vol Fixations (mt)','Outstanding (mt)'].forEach(k => {
-    totals[k] = rows.reduce((s,r)=>s+num(r[k]),0);
-  });
-  const avgs = { 'Customer Name': 'AVG', 'Contract Number': '', 'Sales Name': '', 'Product': '', 'Status': '', 'Customer Group': '' };
-  ['Unit Price ($/KG)','EXW ($/MT)','SC Qty (mt)','Vol Fixations (mt)','Outstanding (mt)'].forEach(k => {
-    avgs[k] = rows.length ? rows.reduce((s,r)=>s+num(r[k]),0)/rows.length : 0;
-  });
-
-  buildAndDownload([...rows, totals, avgs], 'USD_Pivot1_Summary');
-}
-
-function exportPivot2() {
-  const data = getFiltered();
-  const months = window._monthCols || [];
-  const rows = data.map(r => {
-    const row = {
-      'Customer Name': pick(r, COL.customer),
-      'Contract Number': pick(r, COL.contractNum),
-      'Sales Name': pick(r, COL.sales),
-      'Total': months.reduce((s,m)=>s+num(r[m]),0),
-    };
-    months.forEach(m => { row[m] = num(r[m]) || ''; });
-    return row;
-  });
-
-  // Grand total row
-  const grand = { 'Customer Name': 'GRAND TOTAL', 'Contract Number': '', 'Sales Name': '', 'Total': 0 };
-  months.forEach(m => { grand[m] = data.reduce((s,r)=>s+num(r[m]),0) || ''; grand['Total'] += num(grand[m]); });
-
-  // Avg row
-  const avg = { 'Customer Name': 'AVG (non-zero)', 'Contract Number': '', 'Sales Name': '', 'Total': '' };
-  months.forEach(m => {
-    const vals = data.map(r=>num(r[m])).filter(v=>v>0);
-    avg[m] = vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : '';
-  });
-
-  buildAndDownload([...rows, grand, avg], 'USD_Pivot2_Monthly');
-}
-
-function buildAndDownload(rows, name) {
-  const ws = XLSX.utils.json_to_sheet(rows);
-  // Style header
-  const range = XLSX.utils.decode_range(ws['!ref']);
-  for (let C = range.s.c; C <= range.e.c; C++) {
-    const cell = ws[XLSX.utils.encode_cell({r:0,c:C})];
-    if (cell) cell.s = { fill:{fgColor:{rgb:'1F2937'}}, font:{bold:true,color:{rgb:'94A3B8'}} };
+  var sep2='border-left:3px solid #e07b00'; // separator for value block
+  var hMo=allMonths.length?
+    '<th class="mth" style="min-width:70px;'+sep+'">Total Qty</th>'+
+    allMonths.map(function(m,i){
+      return '<th class="mth'+(mN(m)<curNum?' past':'')+'" style="min-width:60px;'+(i===0?sep:'')+'">' + m + '</th>';
+    }).join('')+
+    '<th class="mth" style="min-width:90px;'+sep2+';background:#2a3a1a!important;color:#d4e8a0!important">Avg Price</th>'+
+    allMonths.map(function(m,i){
+      return '<th class="mth" style="min-width:70px;background:#2a3a1a!important;color:#d4e8a0!important;'+(i===0?sep2:'')+'">' + m + ' $</th>';
+    }).join('')
+    :'';
+  // Sub-total row — filled after body renders
+  var hSub='<th colspan="'+fh.length+'" style="background:#0d1f35;color:#8ab8e0;font-size:10px;text-align:left;padding:4px 10px;font-weight:600">TOTAL</th>';
+  if(allMonths.length){
+    hSub+='<th id="st_tot" style="background:#0d1f35;color:#fff;text-align:right;font-family:var(--mono);font-size:11px;padding:4px 8px;'+sep+'">-</th>';
+    allMonths.forEach(function(m){
+      hSub+='<th id="st_'+m.replace('-','_')+'" style="background:#0d1f35;color:#7ec8f0;text-align:right;font-family:var(--mono);font-size:11px;padding:4px 6px">-</th>';
+    });
+    hSub+='<th id="st_avg" style="background:#0a1a0a;'+sep2+'"></th>'; // spacer
+    allMonths.forEach(function(m){
+      hSub+='<th id="stv_'+m.replace('-','_')+'" style="background:#0a1a0a;color:#b8d880;text-align:right;font-family:var(--mono);font-size:11px;padding:4px 6px">-</th>';
+    });
   }
-  // Style total & avg
-  const lastR = range.e.r;
-  for (let C = range.s.c; C <= range.e.c; C++) {
-    const ta = ws[XLSX.utils.encode_cell({r:lastR-1,c:C})];
-    if (ta) ta.s = { fill:{fgColor:{rgb:'1F2D1F'}}, font:{bold:true,color:{rgb:'56D364'}} };
-    const aa = ws[XLSX.utils.encode_cell({r:lastR,c:C})];
-    if (aa) aa.s = { fill:{fgColor:{rgb:'1F2820'}}, font:{color:{rgb:'D29922'}} };
+  document.getElementById('th').innerHTML='<tr>'+hSub+'</tr><tr>'+hFix+hMo+'</tr>';
+
+  // ── STEP 4: Build BODY ──
+  var html='';
+  var gTotSC=0,gTotBal=0,gTotScso=0,gTotVar=0,gTotBk=0;
+  var gMot={};allMonths.forEach(function(m){gMot[m]=0;});
+  var gVal={};allMonths.forEach(function(m){gVal[m]=0;}); // total value per month
+  var totalContracts=0;
+
+  function mkMcells(mo, price){
+    if(!allMonths.length)return{cells:'',tot:'',vcells:'',vtot:''};
+    var rowT=allMonths.reduce(function(s,m){return s+(mo[m]||0);},0);
+    var cells=allMonths.map(function(m,i){
+      var v=mo[m]||0;
+      return '<td class="n '+(v>0?(mN(m)<curNum?'nr':'nb'):'nd')+'"'+(i===0?' style="'+sep+'"':'')+'>'+
+        (v>0?v.toLocaleString('id-ID'):'-')+'</td>';
+    }).join('');
+    var tot='<td class="n '+(rowT>0?'nb':'nd')+'" style="'+sep+'">'+( rowT>0?rowT.toLocaleString('id-ID'):'-')+'</td>';
+    // Value cells: qty × price
+    var totalVal=allMonths.reduce(function(s,m){return s+(mo[m]||0)*price;},0);
+    var avgPr=rowT>0?totalVal/rowT:0;
+    var vcells=allMonths.map(function(m,i){
+      var v=Math.round((mo[m]||0)*price);
+      return '<td class="n" style="font-size:11px;color:#8a6a20;background:#fdfbf0;'+(i===0?sep2:'')+'">'+(v>0?v.toLocaleString('id-ID'):'-')+'</td>';
+    }).join('');
+    var vtot='<td class="n" style="font-size:11px;background:#fdf5d0;'+sep2+'"></td>'; // spacer
+    return{cells:cells,tot:tot,vcells:vcells,vtot:vtot};
   }
-  // Col widths
-  ws['!cols'] = Array(range.e.c+1).fill(null).map((_,i) => ({wch: i<4?22:12}));
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, name.replace(/[^a-zA-Z0-9]/g,'_').slice(0,31));
-  XLSX.writeFile(wb, name + '_' + new Date().toISOString().slice(0,10) + '.xlsx');
+
+  // ── USD ──
+  var usdPivot=pivotRows(typeGroups['USD']||[],K.scNo,K.qty,K.vf,K.dpMonth);
+  _pivotCounts.usd=usdPivot.cOrder.length;
+  if(usdPivot.cOrder.length>0){
+    html+='<tr class="type-group-row"><td colspan="'+(14+(allMonths.length?allMonths.length*2+2:0))+'">USD to be converted in IDR — '+usdPivot.cOrder.length+' contracts</td></tr>';
+    totalContracts+=usdPivot.cOrder.length;
+    usdPivot.cOrder.forEach(function(scNo){
+      var e=usdPivot.cMap[scNo],row=e.row;
+      var cust=g(row,K.cust)||'-',sales=g(row,K.sales)||'-';
+      var up=N(g(row,K.up)),exw=N(g(row,K.exw));
+      var bal=e.qty-e.vf;
+      var sched=allMonths.reduce(function(s,m){return s+(e.mo[m]||0);},0);
+      var dispMo=curSubTab==='adjusted'?adjustMonths(e.mo,bal,allMonths):e.mo;
+      var vari=bal-allMonths.reduce(function(s,m){return s+(dispMo[m]||0);},0);
+      var bkQ=pastMo.reduce(function(s,m){return s+(dispMo[m]||0);},0);
+      var isBk=bkQ>0;
+      var mc=mkMcells(dispMo, exw); // EXW USD price
+      gTotSC+=e.qty;gTotBal+=bal;gTotScso+=bal;gTotVar+=vari;gTotBk+=bkQ;
+      allMonths.forEach(function(m){gMot[m]+=(dispMo[m]||0);gVal[m]+=(dispMo[m]||0)*exw;});
+      html+='<tr>'+
+        '<td><span class="btyp">USD</span></td>'+
+        '<td style="font-weight:500">'+cust+'</td>'+
+        '<td style="font-family:var(--mono);font-size:11px;color:var(--text2)">'+scNo+'</td>'+
+        '<td style="font-weight:600;color:var(--accent2)">'+sales+'</td>'+
+        '<td class="n nb">'+FP(up)+'</td>'+
+        '<td class="n nd">—</td>'+
+        '<td class="n">'+F(exw,2)+'</td>'+
+        '<td class="n">'+F(e.qty,2)+'</td>'+
+        '<td class="n nb">'+F(bal,2)+'</td>'+
+        '<td class="n nd">—</td>'+
+        '<td class="n" style="font-weight:600">'+F(bal,2)+'</td>'+
+        '<td class="n '+(vari>0?'na':vari<0?'nr':'nd')+'">'+( vari?F(vari,2):'-')+'</td>'+
+        '<td style="text-align:center"><span class="badge '+(isBk?'bbl':'bok')+'">'+(isBk?'BACKLOG':'OK')+'</span></td>'+
+        '<td class="n '+(isBk?'nr':'nd')+'">'+( isBk?F(bkQ,2):'-')+'</td>'+
+        mc.tot+mc.cells+mc.vtot+mc.vcells+'</tr>';
+    });
+  }
+
+  // ── IDR 1 ──
+  var idr1Rows=filterBySearch(getIDR1Rows(),KI.sales);
+  if(idr1Rows.length>0){
+    // Pivot by SC Number
+    var i1CMap={},i1COrder=[];
+    idr1Rows.forEach(function(row){
+      var scNo=g(row,KI.scNo)||'?';
+      var ml=parseDPMonth(g(row,KI.dpMonth));
+      var qty  = N(g(row,KI.scQty));
+      var bal  = N(g(row,KI.bal)) || N(g(row,KI.balAlt));  // [Outstanding_IDR] or Outstanding IDR
+      var so   = N(g(row,KI.sumSO));
+      if(!i1CMap[scNo]){i1COrder.push(scNo);i1CMap[scNo]={row:row,qty:0,bal:0,so:0,mo:{}};}
+      i1CMap[scNo].qty += qty;
+      i1CMap[scNo].bal  = Math.max(i1CMap[scNo].bal, bal); // max = contract-level Outstanding
+      i1CMap[scNo].so   = Math.max(i1CMap[scNo].so,  so);  // max = contract-level SumSO
+      if(ml)i1CMap[scNo].mo[ml]=(i1CMap[scNo].mo[ml]||0)+qty;
+    });
+
+    html+='<tr class="type-group-row" style="background:#e8f5e8"><td colspan="'+(14+(allMonths.length?allMonths.length*2+2:0))+'" style="color:#1b5e20">IDR 1 — '+i1COrder.length+' contracts</td></tr>';
+    totalContracts+=i1COrder.length;
+    _pivotCounts.idr1=i1COrder.length;
+
+    i1COrder.forEach(function(scNo){
+      var e=i1CMap[scNo],row=e.row;
+      var cust   = g(row,KI.cust)||'-';
+      var sales  = g(row,KI.sales)||'-';
+      var up     = N(g(row,KI.up));
+      var exwIDR = N(g(row,KI.exwIDR));
+      var exwUSD = N(g(row,KI.exwUSD));
+      var bal    = e.bal;
+      var so     = e.so;
+      var scso   = bal + so;                   // Sum SC+SO = target
+      var dispMo1= curSubTab==='adjusted' ? adjustMonths(e.mo, scso, allMonths) : e.mo;
+      var sched  = allMonths.reduce(function(s,m){return s+(dispMo1[m]||0);},0);
+      var vari   = scso - sched;
+      var bkQ    = pastMo.reduce(function(s,m){return s+(dispMo1[m]||0);},0);
+      var isBk   = bkQ>0;
+      var mc     = mkMcells(dispMo1, exwUSD); // EXW USD price ($/MT) for value calc
+      gTotSC+=e.qty; gTotBal+=bal; gTotScso+=scso; gTotVar+=vari; gTotBk+=bkQ;
+      allMonths.forEach(function(m){gMot[m]+=(dispMo1[m]||0);gVal[m]+=(dispMo1[m]||0)*exwUSD;});
+
+      html+='<tr>'+
+        '<td><span class="btyp" style="background:#dcfce7;color:#166534">IDR 1</span></td>'+
+        '<td style="font-weight:500">'+cust+'</td>'+
+        '<td style="font-family:var(--mono);font-size:11px;color:var(--text2)">'+scNo+'</td>'+
+        '<td style="font-weight:600;color:var(--accent2)">'+sales+'</td>'+
+        '<td class="n nb">'+FP(up)+'</td>'+
+        '<td class="n">'+F(exwIDR,0)+'</td>'+
+        '<td class="n">'+F(exwUSD,2)+'</td>'+
+        '<td class="n">'+F(e.qty,0)+'</td>'+
+        '<td class="n nb">'+F(bal,2)+'</td>'+
+        '<td class="n">'+F(so,2)+'</td>'+
+        '<td class="n" style="font-weight:600">'+F(scso,2)+'</td>'+
+        '<td class="n '+(vari>0?'na':vari<0?'nr':'nd')+'">'+( vari?F(vari,2):'-')+'</td>'+
+        '<td style="text-align:center"><span class="badge '+(isBk?'bbl':'bok')+'">'+(isBk?'BACKLOG':'OK')+'</span></td>'+
+        '<td class="n '+(isBk?'nr':'nd')+'">'+( isBk?F(bkQ,2):'-')+'</td>'+
+        mc.tot+mc.cells+mc.vtot+mc.vcells+'</tr>';
+    });
+  }
+
+  // ── IDR 2 ──
+  var idr2Rows=filterBySearch(getIDR2Rows(),KI.sales);
+  if(idr2Rows.length>0){
+    var i2CMap={},i2COrder=[];
+    idr2Rows.forEach(function(row){
+      var scNo=g(row,KI.scNo)||'?';
+      var ml=parseDPMonth(g(row,KI.dpMonth));
+      var so=N(g(row,KI.sumSO));
+      if(!i2CMap[scNo]){i2COrder.push(scNo);i2CMap[scNo]={row:row,so:0,mo:{}};}
+      i2CMap[scNo].so+=so;
+      if(ml)i2CMap[scNo].mo[ml]=(i2CMap[scNo].mo[ml]||0)+so;
+    });
+    html+='<tr class="type-group-row" style="background:#f0f4ff"><td colspan="'+(14+(allMonths.length?allMonths.length*2+2:0))+'" style="color:#3730a3">IDR 2 — '+i2COrder.length+' contracts (Cancelled / Completed / Closed with SO)</td></tr>';
+    totalContracts+=i2COrder.length;
+    _pivotCounts.idr2=i2COrder.length;
+    i2COrder.forEach(function(scNo){
+      var e=i2CMap[scNo],row=e.row;
+      var cust=g(row,KI.cust)||'-',sales=g(row,KI.sales)||'-';
+      var up=N(g(row,KI.up)),exwIDR=N(g(row,KI.exwIDR)),exwUSD=N(g(row,KI.exwUSD));
+      var dispMo2=curSubTab==='adjusted'?adjustMonths(e.mo,e.so,allMonths):e.mo;
+      var mc=mkMcells(dispMo2, exwUSD);
+      var bkQ2=pastMo.reduce(function(s,m){return s+(dispMo2[m]||0);},0);
+      var isBk2=bkQ2>0;
+      gTotScso+=e.so; gTotBk+=bkQ2;
+      allMonths.forEach(function(m){gMot[m]+=(dispMo2[m]||0);gVal[m]+=(dispMo2[m]||0)*exwUSD;});
+      html+='<tr>'+
+        '<td><span class="btyp" style="background:#ede9fe;color:#3730a3">IDR 2</span></td>'+
+        '<td style="font-weight:500">'+cust+'</td>'+
+        '<td style="font-family:var(--mono);font-size:11px;color:var(--text2)">'+scNo+'</td>'+
+        '<td style="font-weight:600;color:var(--accent2)">'+sales+'</td>'+
+        '<td class="n nb">'+FP(up)+'</td>'+
+        '<td class="n">'+F(exwIDR,0)+'</td>'+
+        '<td class="n">'+F(exwUSD,2)+'</td>'+
+        '<td class="n nd">—</td>'+
+        '<td class="n nd">—</td>'+
+        '<td class="n nb">'+F(e.so,2)+'</td>'+
+        '<td class="n nd">—</td>'+
+        '<td class="n nd">—</td>'+
+        '<td style="text-align:center"><span class="badge '+(isBk2?'bbl':'bok')+'">'+(isBk2?'BACKLOG':'OK')+'</span></td>'+
+        '<td class="n '+(isBk2?'nr':'nd')+'">'+( isBk2?F(bkQ2,2):'-')+'</td>'+
+        mc.tot+mc.cells+mc.vtot+mc.vcells+'</tr>';
+    });
+  }
+
+  document.getElementById('tb').innerHTML=html||
+    '<tr><td colspan="'+(14+(allMonths.length?allMonths.length*2+2:0))+'" class="empty">Tidak ada data untuk produk ini</td></tr>';
+
+  // ── FOOTER ──
+  var gT=allMonths.reduce(function(s,m){return s+gMot[m];},0);
+  var gTVal=allMonths.reduce(function(s,m){return s+gVal[m];},0);
+  var gAvgPrice=gT>0?gTVal/gT:0;
+  var avgP2=usdPivot.cOrder.length?usdPivot.cOrder.map(function(sc){return N(g(usdPivot.cMap[sc].row,K.up));}).reduce(function(a,b){return a+b;},0)/usdPivot.cOrder.length:0;
+  // Store for renderStats Outstanding
+  _pivotCounts.outstanding = gTotScso;
+  var fMo=allMonths.length?
+    '<td style="'+sep+'">'+(gT?gT.toLocaleString('id-ID'):'-')+'</td>'+
+    allMonths.map(function(m,i){var v=gMot[m];return'<td'+(i===0?' style="'+sep+'"':'')+'>'+(v?v.toLocaleString('id-ID'):'-')+'</td>';}).join('')+
+    '<td style="'+sep2+'"></td>'+
+    allMonths.map(function(m,i){var v=Math.round(gVal[m]);return'<td style="color:#8a6a20;'+(i===0?sep2:'')+'">'+(v?v.toLocaleString('id-ID'):'-')+'</td>';}).join('')
+    :'';
+  // ── Update sub-total header row ──
+  var stTot=document.getElementById('st_tot');
+  if(stTot){
+    stTot.textContent=gT?gT.toLocaleString('id-ID'):'-';
+    allMonths.forEach(function(m){
+      var el=document.getElementById('st_'+m.replace('-','_'));
+      if(el)el.textContent=gMot[m]?gMot[m].toLocaleString('id-ID'):'-';
+      var elv=document.getElementById('stv_'+m.replace('-','_'));
+      if(elv){
+        // Per-month avg price = total value for month / total qty for month
+        var mAvg=gMot[m]>0?(gVal[m]/gMot[m]):0;
+        elv.textContent=mAvg?Math.round(mAvg).toLocaleString('id-ID'):'-';
+      }
+    });
+    // Avg Price = per-month: value/qty for each month, shown in the "Avg Price" cell
+    // But we only have one avg cell — use overall weighted avg (total value / total qty)
+    var avgEl=document.getElementById('st_avg');
+    if(avgEl)avgEl.textContent=''; // spacer — no value displayed
+  }
+
+  document.getElementById('tf').innerHTML=
+    '<tr>'+
+    '<td colspan="4">GRAND TOTAL — '+totalContracts+' contracts</td>'+
+    '<td style="color:var(--amber)">'+FP(avgP2)+'</td><td>—</td><td>—</td>'+
+    '<td>'+F(gTotSC,2)+'</td><td>'+F(gTotBal,2)+'</td><td>—</td><td>'+F(gTotScso,2)+'</td>'+
+    '<td style="'+(gTotVar>0?'color:var(--amber)':gTotVar<0?'color:var(--red)':'')+'">'+( gTotVar?F(gTotVar,2):'-')+'</td>'+
+    '<td></td><td>'+(gTotBk?F(gTotBk,2):'-')+'</td>'+
+    fMo+'</tr>';
 }
+
+// DEMO
+function loadDemo() {
+  var ms=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function mkDate(mo,yr){return new Date(1899,11,30).getTime();} // placeholder
+  function row(prod,type,cust,sc,sales,up,exw,qty,vf,dp){
+    var r={};
+    r[K.prod]=prod;r[K.type]=type;r[K.cust]=cust;r[K.scNo]=sc;r[K.sales]=sales;
+    r[K.up]=up;r[K.exw]=exw;r[K.qty]=qty;r[K.vf]=vf;r[K.dpMonth]=dp;r[K.stat]='Active';
+    return r;
+  }
+  // GC product, USD type
+  var demo=[
+    row('GLUCOSE','USD to be converted in IDR','PT ALAM MANIS INDONESIA','124/SC/GC/VIII/2024','EMILIA',0.432,432,550,100,45658),
+    row('GLUCOSE','USD to be converted in IDR','PT ALAM MANIS INDONESIA','124/SC/GC/VIII/2024','EMILIA',0.432,432,0,0,45689),
+    row('GLUCOSE','USD to be converted in IDR','PT ALAM MANIS INDONESIA','124/SC/GC/VIII/2024','EMILIA',0.432,432,0,0,45747),
+    row('GLUCOSE','USD to be converted in IDR','PT AROMA KOPIKRIM','029/SC/GC/IV/2025','EMILIA',0.42,396,4000,1740,45809),
+    row('GLUCOSE','USD to be converted in IDR','PT AROMA KOPIKRIM','029/SC/GC/IV/2025','EMILIA',0.42,396,0,0,45839),
+    row('GLUCOSE','USD to be converted in IDR','PT DIAMOND COLD STORAGE','013/SC/GC/II/2026','RINA',0.49,479,150,50,45962),
+    row('GLUCOSE','USD to be converted in IDR','WINGS GROUP','026/SC/GC/IV/2025','RINA',0.372,372,9960,0,45809),
+    row('GLUCOSE','USD to be converted in IDR','WINGS GROUP','026/SC/GC/IV/2025','RINA',0.372,372,0,0,45839),
+    row('GLUCOSE','USD to be converted in IDR','WINGS GROUP','026/SC/GC/IV/2025','RINA',0.372,372,0,0,45870),
+    row('CORN_STARCH','USD to be converted in IDR','PT KALDU SARI NABATI','006/SC/CS/I/2026','RINA',0.59,565,200,0,45931),
+    row('CORN_STARCH','USD to be converted in IDR','CV PANCA PRAKARSA','108/SC/CS/II/2026','MARIO',0.48,464,50,0,45962),
+    row('HFCS','USD to be converted in IDR','CV IKA RAYA SENTAUSA','011/SC/HFCS/II/2026','EMILIA',0.55,514,66,44,45962),
+  ];
+  loadData(demo);
+}
+
+function doExport() {
+  var wb = XLSX.utils.book_new();
+  var ms2 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var fixedMo = [];
+  [25,26].forEach(function(yr){ ms2.forEach(function(m){ fixedMo.push(m+'-'+yr); }); });
+  var now2 = new Date();
+  var curS2 = now2.toLocaleString('en-US',{month:'short'})+'-'+String(now2.getFullYear()).slice(-2);
+  var pastM = fixedMo.filter(function(m){ return mN(m)<mN(curS2); });
+
+  // All columns: fixed + interleaved month qty+value
+  var fixCols = ['Type','Customer Name','SC Number','Sales Name',
+    'Unit Price','EXW IDR Price','EXW USD Price',
+    'SC Qty (mt)','Balance Contract','Sum of SO','Sum SC+SO',
+    'Variance','Backlog','Backlog Qty'];
+  var allCols = fixCols.slice();
+  fixedMo.forEach(function(m){ allCols.push(m); });
+  fixedMo.forEach(function(m){ allCols.push(m+' $'); });
+
+  var prevProd = curProd;
+
+  products.forEach(function(prod){
+    curProd = prod;
+    var wsRows = [allCols];
+
+    function addSection(label){
+      var r=allCols.map(function(){return'';}); r[0]=label; wsRows.push(r);
+    }
+
+    function buildRow(type,cust,sc,sales,up,exwIDR,exwUSD,qty,bal,so,scso,vari,isBk,bkQ,mo){
+      var r=[type,cust,sc,sales,up||'',exwIDR||'',exwUSD||'',qty||'',bal||'',so||'',scso||'',
+        vari!==''&&vari!==undefined?vari:'', isBk?'BACKLOG':'OK', bkQ||''];
+      fixedMo.forEach(function(m){ r.push(mo[m]||''); });
+      fixedMo.forEach(function(m){
+        r.push((mo[m]||0)*(exwUSD||0)?Math.round((mo[m]||0)*(exwUSD||0)):'');
+      });
+      return r;
+    }
+
+    // USD
+    var uR=getUSDRows(), uCM={}, uCO=[];
+    uR.forEach(function(row){
+      var sc=g(row,K.scNoAlt)||g(row,K.scNo)||'?';
+      var ml=parseDPMonth(g(row,K.dpMonth));
+      var qty=N(g(row,K.qty)),vf=N(g(row,K.vf));
+      if(!uCM[sc]){uCO.push(sc);uCM[sc]={row:row,qty:0,vf:0,mo:{}};}
+      uCM[sc].qty+=qty;uCM[sc].vf+=vf;
+      if(ml)uCM[sc].mo[ml]=(uCM[sc].mo[ml]||0)+qty;
+    });
+    if(uCO.length){
+      addSection('USD to be converted in IDR — '+uCO.length+' contracts');
+      uCO.forEach(function(sc){
+        var e=uCM[sc],row=e.row,bal=e.qty-e.vf;
+        var mo=adjustMonths(e.mo,bal,fixedMo);
+        var sched=fixedMo.reduce(function(s,m){return s+(mo[m]||0);},0);
+        var bkQ=pastM.reduce(function(s,m){return s+(mo[m]||0);},0);
+        wsRows.push(buildRow('USD',g(row,K.cust),sc,g(row,K.sales),N(g(row,K.up)),'',N(g(row,K.exw)),e.qty,bal,'',bal,bal-sched,bkQ>0,bkQ,mo));
+      });
+    }
+
+    // IDR 1
+    var i1R=getIDR1Rows(), i1CM={}, i1CO=[];
+    i1R.forEach(function(row){
+      var sc=g(row,KI.scNo)||'?';
+      var ml=parseDPMonth(g(row,KI.dpMonth));
+      var qty=N(g(row,KI.scQty));
+      if(!i1CM[sc]){i1CO.push(sc);i1CM[sc]={row:row,qty:0,bal:0,so:0,mo:{}};}
+      i1CM[sc].qty+=qty;
+      i1CM[sc].bal=Math.max(i1CM[sc].bal,N(g(row,KI.bal))||N(g(row,KI.balAlt)));
+      i1CM[sc].so =Math.max(i1CM[sc].so, N(g(row,KI.sumSO)));
+      if(ml)i1CM[sc].mo[ml]=(i1CM[sc].mo[ml]||0)+qty;
+    });
+    if(i1CO.length){
+      addSection('IDR 1 — '+i1CO.length+' contracts');
+      i1CO.forEach(function(sc){
+        var e=i1CM[sc],row=e.row,scso=e.bal+e.so;
+        var mo=adjustMonths(e.mo,scso,fixedMo);
+        var sched=fixedMo.reduce(function(s,m){return s+(mo[m]||0);},0);
+        var bkQ=pastM.reduce(function(s,m){return s+(mo[m]||0);},0);
+        wsRows.push(buildRow('IDR 1',g(row,KI.cust),sc,g(row,KI.sales),N(g(row,KI.up)),N(g(row,KI.exwIDR)),N(g(row,KI.exwUSD)),e.qty,e.bal,e.so,scso,scso-sched,bkQ>0,bkQ,mo));
+      });
+    }
+
+    // IDR 2
+    var i2R=getIDR2Rows(), i2CM={}, i2CO=[];
+    i2R.forEach(function(row){
+      var sc=g(row,KI.scNo)||'?';
+      var ml=parseDPMonth(g(row,KI.dpMonth));
+      var so=N(g(row,KI.sumSO));
+      if(!i2CM[sc]){i2CO.push(sc);i2CM[sc]={row:row,so:0,mo:{}};}
+      i2CM[sc].so+=so;
+      if(ml)i2CM[sc].mo[ml]=(i2CM[sc].mo[ml]||0)+so;
+    });
+    if(i2CO.length){
+      addSection('IDR 2 — '+i2CO.length+' contracts (Cancelled/Completed/Closed with SO)');
+      i2CO.forEach(function(sc){
+        var e=i2CM[sc],row=e.row;
+        var mo=adjustMonths(e.mo,e.so,fixedMo);
+        var bkQ=pastM.reduce(function(s,m){return s+(mo[m]||0);},0);
+        wsRows.push(buildRow('IDR 2',g(row,KI.cust),sc,g(row,KI.sales),N(g(row,KI.up)),N(g(row,KI.exwIDR)),N(g(row,KI.exwUSD)),'','',e.so,'','',bkQ>0,bkQ,mo));
+      });
+    }
+
+    curProd=prevProd;
+    if(wsRows.length<=1)return;
+
+    // ── SUB-TOTAL ROW (row 1, above header) ──
+    var qtyStart = fixCols.length;
+    var valStart = fixCols.length + fixedMo.length;
+    var subRow = allCols.map(function(){ return ''; });
+    subRow[0] = 'TOTAL';
+    fixedMo.forEach(function(m, i){
+      var qCol = qtyStart + i;
+      var vCol = valStart + i;
+      var qSum=0, vSum=0;
+      for(var ri=1;ri<wsRows.length;ri++){
+        var r=wsRows[ri];
+        if(!r[1]&&!r[2]) continue; // skip section headers
+        qSum+=Number(r[qCol])||0;
+        vSum+=Number(r[vCol])||0;
+      }
+      subRow[qCol] = qSum||'';
+      subRow[vCol] = (qSum>0)?Math.round(vSum/qSum):'';
+    });
+    // Final order: subRow (row 1) → header (row 2) → data rows
+    wsRows.unshift(subRow);  // subRow at index 0
+    // header was already at index 0, now at index 1
+    // data rows start at index 2
+
+    var ws=XLSX.utils.aoa_to_sheet(wsRows);
+    var rng=XLSX.utils.decode_range(ws['!ref']);
+
+    // Style: row 0 = sub-total (dark), row 1 = header (navy), row 2+ = data
+    for(var ci=0;ci<=rng.e.c;ci++){
+      // Sub-total row (row 0)
+      var st=ws[XLSX.utils.encode_cell({r:0,c:ci})];
+      var cN0=allCols[ci]||'';
+      if(st)st.s={fill:{fgColor:{rgb:'0D1F35'}},font:{bold:true,color:{rgb:cN0.slice(-2)===' $'?'B8D880':'7EC8F0'}},alignment:{horizontal:'right'}};
+      // Header row (row 1)
+      var hc=ws[XLSX.utils.encode_cell({r:1,c:ci})];
+      if(hc)hc.s={fill:{fgColor:{rgb:'1A2F4A'}},font:{bold:true,color:{rgb:'CCE4F8'}},alignment:{horizontal:'center'}};
+    }
+    // Data rows style (row 2+)
+    for(var ri=2;ri<=rng.e.r;ri++){
+      var rowArr=wsRows[ri];
+      var isSection=rowArr&&rowArr[0]&&!rowArr[1]&&String(rowArr[0]).indexOf(' — ')>=0;
+      var isEven=ri%2===0;
+      for(var ci2=0;ci2<=rng.e.c;ci2++){
+        var addr=XLSX.utils.encode_cell({r:ri,c:ci2});
+        if(!ws[addr])ws[addr]={t:'s',v:''};
+        var cv=String(ws[addr].v||'');
+        var colN=allCols[ci2]||'';
+        if(isSection){ws[addr].s={fill:{fgColor:{rgb:'1565C0'}},font:{bold:true,color:{rgb:'FFFFFF'}}};}
+        else if(cv==='BACKLOG'){ws[addr].s={fill:{fgColor:{rgb:'FDE8E6'}},font:{bold:true,color:{rgb:'B83228'}}};}
+        else if(cv==='OK'){ws[addr].s={fill:{fgColor:{rgb:'D4F0E0'}},font:{bold:true,color:{rgb:'1B6B3A'}}};}
+        else if(colN.slice(-2)===' $'){ws[addr].s={fill:{fgColor:{rgb:'FDFBF0'}}};}
+        else{ws[addr].s={fill:{fgColor:{rgb:isEven?'EEF5FC':'FFFFFF'}}};}
+      }
+    }
+    ws['!cols']=allCols.map(function(_,i){return{wch:i<4?22:i<17?12:9};});
+    var sn=prod.replace(/[^a-zA-Z0-9]/g,'_').slice(0,31);
+    XLSX.utils.book_append_sheet(wb,ws,sn);
+  });
+
+  curProd=prevProd;
+  if(!wb.SheetNames.length){alert('Tidak ada data.');return;}
+  XLSX.writeFile(wb,'SalesDataForecast_'+new Date().toISOString().slice(0,10)+'.xlsx',{cellStyles:true});
+}
+
 </script>
 </body>
 </html>
