@@ -1034,7 +1034,10 @@ function doExport() {
       // Sub-total row (row 0)
       var st=ws[XLSX.utils.encode_cell({r:0,c:ci})];
       var cN0=allCols[ci]||'';
-      if(st)st.s={fill:{fgColor:{rgb:'0D1F35'}},font:{bold:true,color:{rgb:cN0.slice(-2)===' $'?'B8D880':'7EC8F0'}},alignment:{horizontal:'right'}};
+      if(st){
+        st.s={fill:{fgColor:{rgb:'0D1F35'}},font:{bold:true,color:{rgb:cN0.slice(-2)===' $'?'B8D880':'7EC8F0'}},alignment:{horizontal:'right'}};
+        if(st.v) st.z='#,##0';
+      }
       // Header row (row 1)
       var hc=ws[XLSX.utils.encode_cell({r:1,c:ci})];
       if(hc)hc.s={fill:{fgColor:{rgb:'1A2F4A'}},font:{bold:true,color:{rgb:'CCE4F8'}},alignment:{horizontal:'center'}};
@@ -1052,8 +1055,14 @@ function doExport() {
         if(isSection){ws[addr].s={fill:{fgColor:{rgb:'1565C0'}},font:{bold:true,color:{rgb:'FFFFFF'}}};}
         else if(cv==='BACKLOG'){ws[addr].s={fill:{fgColor:{rgb:'FDE8E6'}},font:{bold:true,color:{rgb:'B83228'}}};}
         else if(cv==='OK'){ws[addr].s={fill:{fgColor:{rgb:'D4F0E0'}},font:{bold:true,color:{rgb:'1B6B3A'}}};}
-        else if(colN.slice(-2)===' $'){ws[addr].s={fill:{fgColor:{rgb:'FDFBF0'}}};}
-        else{ws[addr].s={fill:{fgColor:{rgb:isEven?'EEF5FC':'FFFFFF'}}};}
+        else if(colN.slice(-2)===' $'){
+          ws[addr].s={fill:{fgColor:{rgb:'FDFBF0'}}};
+          if(ws[addr].v) ws[addr].z='#,##0';
+        }
+        else{
+          ws[addr].s={fill:{fgColor:{rgb:isEven?'EEF5FC':'FFFFFF'}}};
+          if(ci2>=fixCols.length && ws[addr].v) ws[addr].z='#,##0'; // month qty cols
+        }
       }
     }
     ws['!cols']=allCols.map(function(_,i){return{wch:i<4?22:i<17?12:9};});
