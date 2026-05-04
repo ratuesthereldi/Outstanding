@@ -787,10 +787,12 @@ function renderTable(data) {
     idr2Rows.forEach(function(row){
       var scNo=g(row,KI.scNo)||'?';
       var ml=parseDPMonth(g(row,KI.dpMonth));
+      var qty=N(g(row,KI.scQty));
       var so=N(g(row,KI.sumSO));
-      if(!i2CMap[scNo]){i2COrder.push(scNo);i2CMap[scNo]={row:row,so:0,mo:{}};}
-      i2CMap[scNo].so+=so;
-      if(ml)i2CMap[scNo].mo[ml]=(i2CMap[scNo].mo[ml]||0)+so;
+      if(!i2CMap[scNo]){i2COrder.push(scNo);i2CMap[scNo]={row:row,sc:0,so:0,mo:{}};}
+      i2CMap[scNo].sc+=qty;
+      i2CMap[scNo].so=Math.max(i2CMap[scNo].so,so);
+      if(ml)i2CMap[scNo].mo[ml]=(i2CMap[scNo].mo[ml]||0)+qty;
     });
     html+='<tr class="type-group-row" style="background:#f0f4ff"><td colspan="'+(14+(allMonths.length?allMonths.length*2+2:0))+'" style="color:#3730a3">IDR 2 — '+i2COrder.length+' contracts (Cancelled / Completed / Closed with SO)</td></tr>';
     totalContracts+=i2COrder.length;
@@ -799,11 +801,12 @@ function renderTable(data) {
       var e=i2CMap[scNo],row=e.row;
       var cust=g(row,KI.cust)||'-',sales=g(row,KI.sales)||'-';
       var up=N(g(row,KI.up)),exwIDR=N(g(row,KI.exwIDR)),exwUSD=N(g(row,KI.exwUSD));
-      var dispMo2=curSubTab==='adjusted'?adjustMonths(e.mo,e.so,allMonths):e.mo;
+      var scso2=e.sc+e.so;
+      var dispMo2=curSubTab==='adjusted'?adjustMonths(e.mo,scso2,allMonths):e.mo;
       var mc=mkMcells(dispMo2, exwUSD);
       var bkQ2=pastMo.reduce(function(s,m){return s+(dispMo2[m]||0);},0);
       var isBk2=bkQ2>0;
-      gTotScso+=e.so; gTotBk+=bkQ2;
+      gTotScso+=scso2; gTotBk+=bkQ2;
       allMonths.forEach(function(m){gMot[m]+=(dispMo2[m]||0);gVal[m]+=(dispMo2[m]||0)*exwUSD;});
       html+='<tr>'+
         '<td><span class="btyp" style="background:#ede9fe;color:#3730a3">IDR 2</span></td>'+
@@ -813,10 +816,10 @@ function renderTable(data) {
         '<td class="n nb">'+FP(up)+'</td>'+
         '<td class="n">'+F(exwIDR,0)+'</td>'+
         '<td class="n">'+F(exwUSD,2)+'</td>'+
-        '<td class="n nd">—</td>'+
+        '<td class="n">'+F(e.sc,2)+'</td>'+
         '<td class="n nd">—</td>'+
         '<td class="n nb">'+F(e.so,2)+'</td>'+
-        '<td class="n nd">—</td>'+
+        '<td class="n" style="font-weight:600">'+F(scso2,2)+'</td>'+
         '<td class="n nd">—</td>'+
         '<td style="text-align:center"><span class="badge '+(isBk2?'bbl':'bok')+'">'+(isBk2?'BACKLOG':'OK')+'</span></td>'+
         '<td class="n '+(isBk2?'nr':'nd')+'">'+( isBk2?F(bkQ2,2):'-')+'</td>'+
@@ -914,6 +917,7 @@ function doExport() {
     'Variance','Backlog','Backlog Qty'];
   var allCols = fixCols.slice();
   fixedMo.forEach(function(m){ allCols.push(m); });
+  allCols.push('Avg Price (USD/MT)');
   fixedMo.forEach(function(m){ allCols.push(m+' $'); });
 
   var prevProd = curProd;
@@ -930,6 +934,7 @@ function doExport() {
       var r=[type,cust,sc,sales,up||'',exwIDR||'',exwUSD||'',qty||'',bal||'',so||'',scso||'',
         vari!==''&&vari!==undefined?vari:'', isBk?'BACKLOG':'OK', bkQ||''];
       fixedMo.forEach(function(m){ r.push(mo[m]||''); });
+      r.push(exwUSD||''); // Avg Price column = EXW USD Price
       fixedMo.forEach(function(m){
         r.push((mo[m]||0)*(exwUSD||0)?Math.round((mo[m]||0)*(exwUSD||0)):'');
       });
@@ -985,18 +990,21 @@ function doExport() {
     i2R.forEach(function(row){
       var sc=g(row,KI.scNo)||'?';
       var ml=parseDPMonth(g(row,KI.dpMonth));
+      var qty=N(g(row,KI.scQty));
       var so=N(g(row,KI.sumSO));
-      if(!i2CM[sc]){i2CO.push(sc);i2CM[sc]={row:row,so:0,mo:{}};}
-      i2CM[sc].so+=so;
-      if(ml)i2CM[sc].mo[ml]=(i2CM[sc].mo[ml]||0)+so;
+      if(!i2CM[sc]){i2CO.push(sc);i2CM[sc]={row:row,sc:0,so:0,mo:{}};}
+      i2CM[sc].sc+=qty;
+      i2CM[sc].so=Math.max(i2CM[sc].so,so);
+      if(ml)i2CM[sc].mo[ml]=(i2CM[sc].mo[ml]||0)+qty;
     });
     if(i2CO.length){
       addSection('IDR 2 — '+i2CO.length+' contracts (Cancelled/Completed/Closed with SO)');
       i2CO.forEach(function(sc){
         var e=i2CM[sc],row=e.row;
-        var mo=adjustMonths(e.mo,e.so,fixedMo);
+        var scso2=e.sc+e.so;
+        var mo=adjustMonths(e.mo,scso2,fixedMo);
         var bkQ=pastM.reduce(function(s,m){return s+(mo[m]||0);},0);
-        wsRows.push(buildRow('IDR 2',g(row,KI.cust),sc,g(row,KI.sales),N(g(row,KI.up)),N(g(row,KI.exwIDR)),N(g(row,KI.exwUSD)),'','',e.so,'','',bkQ>0,bkQ,mo));
+        wsRows.push(buildRow('IDR 2',g(row,KI.cust),sc,g(row,KI.sales),N(g(row,KI.up)),N(g(row,KI.exwIDR)),N(g(row,KI.exwUSD)),e.sc,'',e.so,scso2,'',bkQ>0,bkQ,mo));
       });
     }
 
@@ -1005,9 +1013,11 @@ function doExport() {
 
     // ── SUB-TOTAL ROW (row 1, above header) ──
     var qtyStart = fixCols.length;
-    var valStart = fixCols.length + fixedMo.length;
+    var avgPriceCol = fixCols.length + fixedMo.length; // Avg Price column index
+    var valStart = fixCols.length + fixedMo.length + 1; // +1 for Avg Price col
     var subRow = allCols.map(function(){ return ''; });
     subRow[0] = 'TOTAL';
+    var totalQAll=0, totalVAll=0;
     fixedMo.forEach(function(m, i){
       var qCol = qtyStart + i;
       var vCol = valStart + i;
@@ -1019,8 +1029,10 @@ function doExport() {
         vSum+=Number(r[vCol])||0;
       }
       subRow[qCol] = qSum||'';
-      subRow[vCol] = (qSum>0)?Math.round(vSum/qSum):'';
+      subRow[vCol] = vSum||'';
+      totalQAll+=qSum; totalVAll+=vSum;
     });
+    subRow[avgPriceCol] = totalQAll>0?Math.round(totalVAll/totalQAll):'';
     // Final order: subRow (row 1) → header (row 2) → data rows
     wsRows.unshift(subRow);  // subRow at index 0
     // header was already at index 0, now at index 1
@@ -1035,7 +1047,8 @@ function doExport() {
       var st=ws[XLSX.utils.encode_cell({r:0,c:ci})];
       var cN0=allCols[ci]||'';
       if(st){
-        st.s={fill:{fgColor:{rgb:'0D1F35'}},font:{bold:true,color:{rgb:cN0.slice(-2)===' $'?'B8D880':'7EC8F0'}},alignment:{horizontal:'right'}};
+        var isAvgCol=(cN0==='Avg Price (USD/MT)');
+        st.s={fill:{fgColor:{rgb:'0D1F35'}},font:{bold:true,color:{rgb:isAvgCol?'B8D880':cN0.slice(-2)===' $'?'B8D880':'7EC8F0'}},alignment:{horizontal:'right'}};
         if(st.v) st.z='#,##0';
       }
       // Header row (row 1)
@@ -1055,6 +1068,10 @@ function doExport() {
         if(isSection){ws[addr].s={fill:{fgColor:{rgb:'1565C0'}},font:{bold:true,color:{rgb:'FFFFFF'}}};}
         else if(cv==='BACKLOG'){ws[addr].s={fill:{fgColor:{rgb:'FDE8E6'}},font:{bold:true,color:{rgb:'B83228'}}};}
         else if(cv==='OK'){ws[addr].s={fill:{fgColor:{rgb:'D4F0E0'}},font:{bold:true,color:{rgb:'1B6B3A'}}};}
+        else if(colN==='Avg Price (USD/MT)'){
+          ws[addr].s={fill:{fgColor:{rgb:'F5FBE8'}},font:{bold:true,color:{rgb:'2A5A10'}}};
+          if(ws[addr].v) ws[addr].z='#,##0';
+        }
         else if(colN.slice(-2)===' $'){
           ws[addr].s={fill:{fgColor:{rgb:'FDFBF0'}}};
           if(ws[addr].v) ws[addr].z='#,##0';
