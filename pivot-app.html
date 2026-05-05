@@ -1138,21 +1138,72 @@ function doExport() {
     curProd = prod;
     var wsRows = [];
 
-    function buildRow(type,cust,sc,sales,up,exwIDR,exwUSD,qty,bal,so,scso,vari,isBk,bkQ,mo){
+    // Column index helpers (0-based)
+    // fixCols: 0=Type,1=Cust,2=SC,3=Sales,4=UP,5=exwIDR,6=exwUSD,7=qty,8=bal,9=so,10=scso,11=vari,12=bk,13=bkQ
+    // then fixedMo qty cols: 14..14+24-1=37
+    // sep col: 38
+    // value cols: 39..62
+    var exwUSDCol = 7; // 1-based = col G (0-based=6)
+    var scsoColIdx = 10; // 0-based
+    var variColIdx = 11;
+    var bkColIdx   = 12;
+    var bkQColIdx  = 13;
+
+    // Find past months (before current month) indices within fixedMo
+    var curMonthN = mN(new Date().toLocaleString('en-US',{month:'short'})+'-'+String(new Date().getFullYear()).slice(-2));
+    var pastMoIdx = fixedMo.map(function(m,i){return{m:m,i:i};}).filter(function(x){return mN(x.m)<curMonthN;}).map(function(x){return x.i;});
+
+    function cl(zeroIdx){ // col letter from 0-based index
+      var n=zeroIdx+1,s='';
+      while(n>0){s=String.fromCharCode(65+((n-1)%26))+s;n=Math.floor((n-1)/26);}
+      return s;
+    }
+
+    function buildRow(type,cust,sc,sales,up,exwIDR,exwUSD,qty,bal,so,scso,vari,isBk,bkQ,mo,rowNum){
       var r=[type,cust,sc,sales,
         (up!==''&&up!==null&&up!==undefined)?Number(up):'',
         (exwIDR!==''&&exwIDR!==null&&exwIDR!==undefined)?Number(exwIDR):'',
         (exwUSD!==''&&exwUSD!==null&&exwUSD!==undefined)?Number(exwUSD):'',
         qty!==''?Number(qty):'', bal!==''?Number(bal):'',
-        so!==''?Number(so):'', scso!==''?Number(scso):'',
-        (vari!==''&&vari!==undefined&&vari!==null)?Number(vari):'',
-        isBk?'BACKLOG':'OK', bkQ?Number(bkQ):''];
-      fixedMo.forEach(function(m){ r.push(mo[m]?Number(mo[m]):''); });
-      r.push(null); // separator column
-      fixedMo.forEach(function(m){
-        var v=(mo[m]||0)*(exwUSD||0);
-        r.push(v?Math.round(v):'');
+        so!==''?Number(so):'', scso!==''?Number(scso):''];
+
+      // Qty month cols first pass — push values
+      var qtyColStart = 14; // 0-based index of first qty month col
+      var moVals = fixedMo.map(function(m){ return mo[m]?Number(mo[m]):null; });
+
+      // VARIANCE = Sum SC+SO - SUM(all month qty cols)
+      var scsoCell = cl(scsoColIdx)+rowNum;
+      var qtyRange = cl(qtyColStart)+rowNum+':'+cl(qtyColStart+fixedMo.length-1)+rowNum;
+      var variFormula = {formula: 'IFERROR('+scsoCell+'-SUM('+qtyRange+'),"")'};
+
+      // BACKLOG = IF(SUM(past month cols)>0,"BACKLOG","OK")
+      var bkFormula, bkQFormula;
+      if(pastMoIdx.length>0){
+        var pastCells=pastMoIdx.map(function(i){return cl(qtyColStart+i)+rowNum;}).join('+');
+        bkQFormula  = {formula:'IFERROR('+pastCells+',0)'};
+        bkFormula   = {formula:'IF(IFERROR('+pastCells+',0)>0,"BACKLOG","OK")'};
+      } else {
+        bkFormula = 'OK';
+        bkQFormula = null;
+      }
+
+      r.push(variFormula); // col 11 Variance
+      r.push(bkFormula);   // col 12 Backlog
+      r.push(bkQFormula);  // col 13 Backlog Qty
+
+      // Monthly qty cols (14..37)
+      moVals.forEach(function(v){ r.push(v); });
+
+      // Separator
+      r.push(null);
+
+      // Value cols = qty col * EXW USD col (col G = index 6, 1-based = col G)
+      var exwCell = cl(6)+rowNum; // EXW USD Price col (0-based index 6)
+      fixedMo.forEach(function(m,i){
+        var qCell = cl(qtyColStart+i)+rowNum;
+        r.push({formula:'IF(IFERROR('+qCell+'*'+exwCell+',0)=0,"-",IFERROR('+qCell+'*'+exwCell+',""))'});
       });
+
       return r;
     }
 
@@ -1180,7 +1231,7 @@ function doExport() {
       var mo=adjustMonths(e.mo,bal,fixedMo);
       var sched=fixedMo.reduce(function(s,m){return s+(mo[m]||0);},0);
       var bkQ=pastM.reduce(function(s,m){return s+(mo[m]||0);},0);
-      wsRows.push(buildRow('USD',g(row,K.cust),sc,g(row,K.sales),N(g(row,K.up)),'',N(g(row,K.exw)),e.qty,bal,'',bal,bal-sched,bkQ>0,bkQ,mo));
+      wsRows.push(buildRow('USD',g(row,K.cust),sc,g(row,K.sales),N(g(row,K.up)),'',N(g(row,K.exw)),e.qty,bal,'',bal,bal-sched,bkQ>0,bkQ,mo,3+wsRows.length));
     });
 
     var i1R=getIDR1Rows(), i1CM={}, i1CO=[];
@@ -1199,7 +1250,7 @@ function doExport() {
       var mo=adjustMonths(e.mo,scso,fixedMo);
       var sched=fixedMo.reduce(function(s,m){return s+(mo[m]||0);},0);
       var bkQ=pastM.reduce(function(s,m){return s+(mo[m]||0);},0);
-      wsRows.push(buildRow('IDR 1',g(row,KI.cust),sc,g(row,KI.sales),N(g(row,KI.up)),N(g(row,KI.exwIDR)),(N(g(row,KI.exwUSD))||N(g(row,KI.exwUSDalt))),e.qty,e.bal,e.so,scso,scso-sched,bkQ>0,bkQ,mo));
+      wsRows.push(buildRow('IDR 1',g(row,KI.cust),sc,g(row,KI.sales),N(g(row,KI.up)),N(g(row,KI.exwIDR)),(N(g(row,KI.exwUSD))||N(g(row,KI.exwUSDalt))),e.qty,e.bal,e.so,scso,scso-sched,bkQ>0,bkQ,mo,3+wsRows.length));
     });
 
     var i2R=getIDR2Rows(), i2CM={}, i2CO=[];
@@ -1217,7 +1268,7 @@ function doExport() {
       var e=i2CM[sc],row=e.row;
       var mo=adjustMonths(e.mo,e.so,fixedMo);
       var bkQ=pastM.reduce(function(s,m){return s+(mo[m]||0);},0);
-      wsRows.push(buildRow('IDR 2',g(row,KI.cust),sc,g(row,KI.sales),N(g(row,KI.up)),N(g(row,KI.exwIDR)),(N(g(row,KI.exwUSD))||N(g(row,KI.exwUSDalt))),'','',e.so,e.so,'',bkQ>0,bkQ,mo));
+      wsRows.push(buildRow('IDR 2',g(row,KI.cust),sc,g(row,KI.sales),N(g(row,KI.up)),N(g(row,KI.exwIDR)),(N(g(row,KI.exwUSD))||N(g(row,KI.exwUSDalt))),'','',e.so,e.so,'',bkQ>0,bkQ,mo,3+wsRows.length));
     });
 
     curProd=prevProd;
@@ -1346,10 +1397,10 @@ function doExport() {
         } else if(isVal){
           cell.fill=hFill(isEven?C.valBgAlt:C.valBg);
           cell.font={size:10,color:{argb:'FF8A6A20'}};
-          if(typeof cv==='number')cell.numFmt='#,##0';
+          if(typeof cv==='number'||(cv&&cv.formula))cell.numFmt='#,##0';
         } else {
           cell.fill=hFill(isEven?C.even:C.odd);
-          if(typeof cv==='number')cell.numFmt='#,##0';
+          if(typeof cv==='number'||(cv&&cv.formula))cell.numFmt='#,##0';
         }
       });
     });
