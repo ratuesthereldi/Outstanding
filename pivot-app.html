@@ -139,11 +139,12 @@ tfoot td:first-child{text-align:left;font-family:var(--sans);font-size:11px;colo
   </div>
   <div class="topbar-sep"></div>
   <div class="topbar-sub">Sales Data Forecast</div>
-  <div id="refreshBtn" style="display:none;margin-left:auto">
-    <button onclick="refreshFile()" class="btn btn-primary" style="font-size:11px;padding:6px 16px;display:flex;align-items:center;gap:6px">
-      🔄 Refresh
-    </button>
-    <span id="fileNameLabel" style="font-size:11px;color:var(--text3);margin-left:8px"></span>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+    <span id="fileNameLabel" style="font-size:11px;color:var(--text3)"></span>
+    <button onclick="selectFile()" class="btn" style="font-size:11px;padding:5px 14px;background:#1a2f4a;color:#b8d8f4;border:1px solid #2a4a6a;border-radius:6px;cursor:pointer">📂 Ganti File</button>
+    <div id="refreshBtn" style="display:none">
+      <button onclick="refreshFile()" class="btn btn-primary" style="font-size:11px;padding:6px 14px">🔄 Refresh</button>
+    </div>
   </div>
 
 </div>
@@ -195,23 +196,6 @@ tfoot td:first-child{text-align:left;font-family:var(--sans);font-size:11px;colo
   </div>
 </div>
 
-<!-- OPEN SHEET VIEW -->
-<div id="openSection" class="hidden">
-  <div style="padding:14px 24px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
-    <span style="font-size:13px;font-weight:700;color:var(--accent)">📋 Open Summary — All Products</span>
-    <span style="font-size:11px;color:var(--text3)">Volume, Price & Value per Month</span>
-    <div style="margin-left:auto">
-      <button onclick="doExport()" class="btn btn-primary" style="font-size:11px;padding:6px 14px">↓ Export Excel</button>
-    </div>
-  </div>
-  <div class="table-wrap" style="max-height:calc(100vh - 180px)">
-    <table id="openTable" style="width:100%;border-collapse:collapse;min-width:900px">
-      <thead id="openThead"></thead>
-      <tbody id="openTbody"></tbody>
-      <tfoot id="openTfoot"></tfoot>
-    </table>
-  </div>
-</div>
 
 <script>
 var allRaw = [];
@@ -397,6 +381,23 @@ function handleFile(file) {
     allRaw=usdSheet?parseSheetByName(wb,usdSheet):[];
     idrRaw=idrSheet?parseSheetByName(wb,idrSheet):[];
 
+    // Save to localStorage — compress by only keeping used fields
+    try {
+      var usdFields=[K.prod,K.stat,K.type,K.exw,K.up,K.dpMonth,K.cust,K.scNo,K.scNoAlt,K.sales,K.qty,K.qtyAlt,K.vf,K.vf];
+      var idrFields=[KI.prod,KI.stat,KI.type,KI.exwIDR,KI.exwUSD,KI.exwUSDalt,KI.up,KI.dpMonth,KI.cust,KI.scNo,KI.sales,KI.scQty,KI.bal,KI.balAlt,KI.sumSO];
+      function slim(rows, fields){
+        return rows.map(function(r){
+          var o={};
+          fields.forEach(function(f){if(f&&r[f]!==undefined)o[f]=r[f];});
+          return o;
+        });
+      }
+      var saveData={a:slim(allRaw,usdFields),i:slim(idrRaw,idrFields),f:file.name,t:new Date().toISOString()};
+      var json=JSON.stringify(saveData);
+      localStorage.setItem('tereosData',json);
+      console.log('Saved to localStorage: '+(json.length/1024).toFixed(0)+'KB');
+    } catch(e){ console.warn('localStorage save failed:',e.message); }
+
     // Collect products from both sheets
     var pSet={};
     allRaw.forEach(function(r){var p=g(r,K.prod,'Product');if(p)pSet[p]=1;});
@@ -419,20 +420,69 @@ function handleFile(file) {
       return;
     }
     buildTabs();
+    _openCache = {}; // clear cache for new file
     switchProd(products[0]);
-    // Show refresh button with filename and last loaded time
+    // Show filename + time
     var now=new Date();
     var timeStr=now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
-    if(!_fileHandle) document.getElementById('fileNameLabel').textContent=file.name;
-    document.getElementById('fileNameLabel').title='Last loaded: '+timeStr;
-    document.getElementById('fileNameLabel').textContent=((_fileHandle?_fileHandle.name:file.name))+' · '+timeStr;
+    var fname=(_fileHandle?_fileHandle.name:file.name);
+    document.getElementById('fileNameLabel').textContent=fname+' · '+timeStr;
     document.getElementById('refreshBtn').style.display='flex';
     document.getElementById('refreshBtn').style.alignItems='center';
   };
   reader.readAsBinaryString(file);
 }
 
-function parseSheetByName(wb,sheetName){
+function loadFromStorage() {
+  try {
+    var saved = localStorage.getItem('tereosData');
+    if (!saved) return false;
+    var data = JSON.parse(saved);
+    if (!data.a || !data.a.length) return false;
+
+    allRaw = data.a;
+    idrRaw = data.i || [];
+
+    var pSet={};
+    allRaw.forEach(function(r){var p=g(r,K.prod,'Product');if(p)pSet[p]=1;});
+    idrRaw.forEach(function(r){var p=g(r,KI.prod,'Product');if(p)pSet[p]=1;});
+    var PROD_ORDER=['CORN STARCH','CORN_STARCH','GLUCOSE','HFCS','MALTODEXTRIN',
+                   'CORN GLUTEN FEED','CORN_GLUTEN_FEED','CORN GLUTEN MEAL','CORN_GLUTEN_MEAL',
+                   'CORN GERM','CORN_GERM','MENIR','OTHERS'];
+    var allProds=Object.keys(pSet);
+    allProds.sort(function(a,b){
+      var ai=PROD_ORDER.findIndex(function(x){return x===a||x.replace(/_/g,' ')===a.replace(/_/g,' ');});
+      var bi=PROD_ORDER.findIndex(function(x){return x===b||x.replace(/_/g,' ')===b.replace(/_/g,' ');});
+      if(ai<0)ai=999; if(bi<0)bi=999;
+      if(ai!==bi)return ai-bi;
+      return a.localeCompare(b);
+    });
+    products = allProds;
+    if (!products.length) return false;
+
+    buildTabs();
+    _openCache = {};
+    switchProd(products[0]);
+
+    // Show saved file info
+    var savedAt = data.t ? new Date(data.t) : null;
+    var timeStr = savedAt ? savedAt.toLocaleDateString('id-ID',{day:'2-digit',month:'short'})+' '+savedAt.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}) : '';
+    document.getElementById('fileNameLabel').textContent = (data.f||'Saved file') + ' · ' + timeStr;
+    document.getElementById('refreshBtn').style.display='flex';
+    document.getElementById('refreshBtn').style.alignItems='center';
+    return true;
+  } catch(e) {
+    console.warn('localStorage load failed:', e);
+    return false;
+  }
+}
+
+// Load saved data on startup
+window.addEventListener('load', function(){
+  loadFromStorage();
+});
+
+function parseSheetByName(wb, sheetName) {
   var raw=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{defval:'',header:1,raw:true});
   var hi=findHeaderRow(raw);
   if(hi<0)return[];
@@ -486,15 +536,6 @@ var curView = 'product'; // 'product' or 'open'
 function buildTabs() {
   var tabs=document.getElementById('prodTabs');
   tabs.innerHTML='';
-  // Add Open tab first
-  var openEl=document.createElement('div');
-  openEl.className='prod-tab'+(curView==='open'?' active':'');
-  openEl.textContent='📋 Open';
-  openEl.setAttribute('data-prod','__OPEN__');
-  openEl.onclick=function(){switchToOpen();};
-  tabs.appendChild(openEl);
-
-  // Show ALL products in tabs
   products.forEach(function(p) {
     var el=document.createElement('div');
     el.className='prod-tab';
@@ -512,7 +553,27 @@ function switchToOpen() {
   });
   document.getElementById('uploadSection').classList.add('hidden');
   document.getElementById('appSection').classList.add('hidden');
-  document.getElementById('openSection').classList.remove('hidden');
+  
+
+  // Pre-populate cache for all open products silently
+  var OPEN_KEYS=['corn starch','glucose','glucose syrup','hfcs','hfcs 55','maltodextrin'];
+  var openProds=products.filter(function(p){
+    var pl=p.toLowerCase().replace(/_/g,' ').trim();
+    return OPEN_KEYS.some(function(k){return pl===k||pl.indexOf(k)>=0||k.indexOf(pl)>=0;});
+  });
+  if(!openProds.length) openProds=products.slice();
+  var savedProd=curProd;
+  openProds.forEach(function(p){
+    if(!_openCache[p]){
+      curProd=p;
+      render(); // populates _openCache[p], but view is hidden so no flicker
+    }
+  });
+  curProd=savedProd;
+  // Keep open section visible
+  document.getElementById('appSection').classList.add('hidden');
+  
+
   renderOpenSheet();
 }
 
@@ -527,7 +588,7 @@ function switchProd(p) {
   populateFilters(rows);
   document.getElementById('uploadSection').classList.add('hidden');
   document.getElementById('appSection').classList.remove('hidden');
-  document.getElementById('openSection').classList.add('hidden');
+  
   sortCol=null;
   render();
 }
@@ -644,6 +705,7 @@ function filterBySearch(rows, salesKey) {
 
 // Global pivot counts — set by renderTable, read by renderStats
 var _pivotCounts = {usd:0, idr1:0, idr2:0};
+var _openCache = {}; // cache per product: {bkVol, bkVal, moVol:{}, moVal{}}
 
 function render() {
   var data=getFiltered();
@@ -984,6 +1046,20 @@ function renderTable(data) {
   var fType=getTypeFilter();
   var usdPivot=pivotRows(typeGroups['USD']||[],K.scNo,K.qty,K.vf,K.dpMonth,K.qtyAlt);
   _pivotCounts.usd=usdPivot.cOrder.length;
+
+  // ── Cache data for Open tab ──
+  var _bkVol=0,_bkVal=0,_moVol={},_moVal={};
+  allMonths.forEach(function(m){_moVol[m]=0;_moVal[m]=0;});
+  usdPivot.cOrder.forEach(function(scNo){
+    var e=usdPivot.cMap[scNo];
+    var exw=N(g(e.row,K.exw));
+    var dispMo=e.mo;
+    pastMo.forEach(function(m){_bkVol+=(dispMo[m]||0);_bkVal+=(dispMo[m]||0)*exw;});
+    allMonths.filter(function(m){return mN(m)>=curNum;}).forEach(function(m){
+      _moVol[m]+=(dispMo[m]||0);_moVal[m]+=(dispMo[m]||0)*exw;
+    });
+  });
+  _openCache[curProd]={bkVol:_bkVol,bkVal:_bkVal,moVol:_moVol,moVal:_moVal,allMonths:allMonths.slice(),curNum:curNum};
   if(usdPivot.cOrder.length>0 && (!fType||fType==='USD')){
     html+='<tr class="type-group-row"><td colspan="'+(14+(allMonths.length?allMonths.length*2+2:0))+'">USD to be converted in IDR — '+usdPivot.cOrder.length+' contracts</td></tr>';
     totalContracts+=usdPivot.cOrder.length;
@@ -1352,84 +1428,34 @@ function renderOpenSheet() {
   });
   if(!openProdsWeb.length) openProdsWeb=products.slice();
 
-  var now2=new Date();
-  var ms2=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var curMonthName=ms2[now2.getMonth()];
-  var curYY=String(now2.getFullYear()).slice(-2);
-  var curStr=curMonthName+'-'+curYY;
-  var curNum2=mN(curStr);
-
-  // Build months: current month onwards
+  // Collect all dispMonths from cache
   var moSet={};
-  [25,26,27].forEach(function(yr){ms2.forEach(function(m){var k=m+'-'+yr;moSet[k]=mN(k);});});
-  allRaw.forEach(function(r){var ml=parseDPMonth(g(r,K.dpMonth));if(ml)moSet[ml]=mN(ml);});
-  var dispMonths=Object.keys(moSet).sort(function(a,b){return moSet[a]-moSet[b];}).filter(function(m){return mN(m)>=curNum2;});
+  openProdsWeb.forEach(function(p){
+    var c=_openCache[p];
+    if(!c) return;
+    Object.keys(c.moVol).forEach(function(m){if(mN(m)>=c.curNum)moSet[m]=mN(m);});
+  });
+  var dispMonths=Object.keys(moSet).sort(function(a,b){return moSet[a]-moSet[b];});
 
   document.getElementById('openThead').innerHTML='<tr style="background:#1a2f4a">'+
-    '<th style="background:#1a2f4a;color:#b8d8f4;padding:8px 10px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;position:sticky;top:0;z-index:10;white-space:nowrap;min-width:150px">Product</th>'+
-    '<th style="background:#7f1d1d;color:#fca5a5;padding:8px 10px;text-align:right;font-size:10px;font-weight:700;text-transform:uppercase;position:sticky;top:0;z-index:10;white-space:nowrap;min-width:90px">Backlog</th>'+
+    '<th style="background:#1a2f4a;color:#b8d8f4;padding:8px 10px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;position:sticky;top:0;z-index:10;white-space:nowrap;min-width:130px">Product</th>'+
+    '<th style="background:#1a2f4a;color:#b8d8f4;padding:8px 6px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;position:sticky;top:0;z-index:10;white-space:nowrap;min-width:110px"></th>'+
+    '<th style="background:#7f1d1d;color:#fca5a5;padding:8px 10px;text-align:right;font-size:10px;font-weight:700;text-transform:uppercase;position:sticky;top:0;z-index:10;white-space:nowrap;min-width:80px">Backlog</th>'+
     dispMonths.map(function(m){return'<th style="background:#1a3055;color:#fff;padding:8px 6px;text-align:right;font-size:10px;font-weight:700;position:sticky;top:0;z-index:10;white-space:nowrap;min-width:70px">'+m+'</th>';}).join('')+
     '<th style="background:#1f4a1a;color:#b8d880;padding:8px 10px;text-align:right;font-size:10px;font-weight:700;position:sticky;top:0;z-index:10;white-space:nowrap;min-width:90px">Grand Total</th></tr>';
 
   var prodColors=[{h:'#fef3c7',t:'#92400e'},{h:'#dcfce7',t:'#166534'},{h:'#dbeafe',t:'#1e40af'},{h:'#fce7f3',t:'#9d174d'}];
-  var pastMo2=Object.keys(moSet).filter(function(m){return mN(m)<curNum2;});
   var html='';
   var totBkVol=0,totBkVal=0,totMoVol={},totMoVal={};
   dispMonths.forEach(function(m){totMoVol[m]=0;totMoVal[m]=0;});
 
   openProdsWeb.forEach(function(prod,pi){
+    var c=_openCache[prod];
+    if(!c){html+='';return;}
     var pc=prodColors[pi%prodColors.length];
 
-    var usdRows=allRaw.filter(function(r){
-      if(g(r,K.prod,'Product')!==prod) return false;
-      var stat=String(g(r,K.stat)||'').toLowerCase().trim();
-      if(stat==='cancelled'||stat==='completed'||stat==='closed'||
-         stat.indexOf('cancel')>=0||stat.indexOf('complet')>=0||stat.indexOf('clos')>=0) return false;
-      var type=String(g(r,K.type)||'').toLowerCase().trim();
-      return type.indexOf('usd to be converted')>=0||type==='usd to be converted in idr';
-    });
-
-    // Build all months that appear in data for this product
-    var allMoKeys={};
-    usdRows.forEach(function(row){var ml=parseDPMonth(g(row,K.dpMonth));if(ml)allMoKeys[ml]=1;});
-    var allProdMonths=Object.keys(allMoKeys).sort(function(a,b){return mN(a)-mN(b);});
-
-    // Pivot per SC - exact same as pivotRows() in renderTable
-    var scMap={};
-    usdRows.forEach(function(row){
-      var sc=g(row,K.scNoAlt)||g(row,K.scNo)||'?';
-      var qty=N(g(row,K.qty)), vf=N(g(row,K.vf));
-      var moQty=N(g(row,K.qtyAlt))||qty;
-      var ml=parseDPMonth(g(row,K.dpMonth));
-      var exw=N(g(row,K.exw));
-      if(!scMap[sc])scMap[sc]={qty:0,vf:0,mo:{},exw:0,moSum:0};
-      scMap[sc].qty=Math.max(scMap[sc].qty,qty);
-      scMap[sc].vf=Math.max(scMap[sc].vf,vf);
-      if(exw)scMap[sc].exw=exw;
-      scMap[sc].moSum+=moQty;
-      if(ml)scMap[sc].mo[ml]=(scMap[sc].mo[ml]||0)+moQty;
-    });
-    // Fallback qty
-    Object.keys(scMap).forEach(function(sc){if(!scMap[sc].qty)scMap[sc].qty=scMap[sc].moSum;});
-
-    // Main tab: dispMo = e.mo (raw), bkQ = sum of past months, future = sum of future months
-    var allMo={},allVal={},bkVol=0,bkVal=0;
-    Object.keys(scMap).forEach(function(sc){
-      var e=scMap[sc];
-      var dispMo=e.mo; // main tab = raw, no adjustMonths
-      // Past months → backlog
-      allProdMonths.forEach(function(m){
-        if(mN(m)<curNum2){
-          bkVol+=(dispMo[m]||0);
-          bkVal+=(dispMo[m]||0)*e.exw;
-        }
-      });
-      // Current+future months
-      dispMonths.forEach(function(m){
-        allMo[m]=(allMo[m]||0)+(dispMo[m]||0);
-        allVal[m]=(allVal[m]||0)+(dispMo[m]||0)*e.exw;
-      });
-    });
+    var bkVol=c.bkVol, bkVal=c.bkVal;
+    var allMo=c.moVol, allVal=c.moVal;
 
     totBkVol+=bkVol; totBkVal+=bkVal;
     dispMonths.forEach(function(m){totMoVol[m]+=(allMo[m]||0);totMoVal[m]+=(allVal[m]||0);});
@@ -1440,15 +1466,18 @@ function renderOpenSheet() {
     var gtPrice=gtVol>0?gtVal/gtVol:0;
 
     html+='<tr>'+
-      '<td rowspan="3" style="background:'+pc.h+';color:'+pc.t+';font-weight:700;font-size:12px;padding:8px 10px;border-right:2px solid #ccc;border-bottom:3px solid #9fc3e0;vertical-align:middle">'+prod.replace(/_/g,' ')+'</td>'+
+      '<td rowspan="3" style="background:'+pc.h+';color:'+pc.t+';font-weight:700;font-size:12px;padding:8px 10px;border-right:1px solid #e5e7eb;border-bottom:3px solid #9fc3e0;vertical-align:middle">'+prod.replace(/_/g,' ')+'</td>'+
+      '<td style="font-size:10px;color:#374151;padding:5px 8px;border-right:1px solid #e5e7eb;white-space:nowrap">Volume (mt)</td>'+
       '<td class="n nr" style="padding:5px 8px;font-size:11px;border-right:1px solid #e5e7eb;background:#fde8e6;font-weight:700">'+(Math.round(bkVol)>0?Math.round(bkVol).toLocaleString('id-ID'):'-')+'</td>'+
       dispMonths.map(function(m){var v=Math.round(allMo[m]||0);return'<td class="n '+(v>0?'nb':'nd')+'" style="padding:5px 6px;font-size:11px;border-right:1px solid #e5e7eb">'+(v>0?v.toLocaleString('id-ID'):'-')+'</td>';}).join('')+
       '<td class="n nb" style="padding:5px 8px;font-size:11px;font-weight:700;border-left:2px solid #3a78c9;background:#eef5fc">'+(Math.round(gtVol)>0?Math.round(gtVol).toLocaleString('id-ID'):'-')+'</td></tr>';
     html+='<tr>'+
+      '<td style="font-size:10px;color:#374151;padding:5px 8px;border-right:1px solid #e5e7eb;white-space:nowrap">Price (USD/MT)</td>'+
       '<td class="n" style="padding:5px 8px;font-size:11px;color:#6b7280;border-right:1px solid #e5e7eb;background:#fafafa">'+(bkPrice>0?bkPrice.toFixed(2):'-')+'</td>'+
       dispMonths.map(function(m){var v=allMo[m]>0?(allVal[m]||0)/allMo[m]:0;return'<td class="n" style="padding:5px 6px;font-size:11px;color:#6b7280;border-right:1px solid #e5e7eb;background:#fafafa">'+(v>0?v.toFixed(2):'-')+'</td>';}).join('')+
       '<td class="n" style="padding:5px 8px;font-size:11px;color:#6b7280;border-left:2px solid #3a78c9;background:#eef5fc">'+(gtPrice>0?gtPrice.toFixed(2):'-')+'</td></tr>';
     html+='<tr style="border-bottom:3px solid #9fc3e0">'+
+      '<td style="font-size:10px;color:#374151;font-weight:600;padding:5px 8px;border-right:1px solid #e5e7eb;white-space:nowrap">Value (K USD)</td>'+
       '<td class="n" style="padding:5px 8px;font-size:11px;color:#92400e;font-weight:600;border-right:1px solid #e5e7eb;background:#fde8e6">'+(Math.round(bkVal/1000)>0?Math.round(bkVal/1000).toLocaleString('id-ID'):'-')+'</td>'+
       dispMonths.map(function(m){var v=Math.round((allMo[m]||0)*(allMo[m]>0?(allVal[m]||0)/allMo[m]:0)/1000);return'<td class="n" style="padding:5px 6px;font-size:11px;color:#92400e;background:#fdfbf0;border-right:1px solid #e5e7eb">'+(v>0?v.toLocaleString('id-ID'):'-')+'</td>';}).join('')+
       '<td class="n" style="padding:5px 8px;font-size:11px;color:#166534;font-weight:700;border-left:2px solid #3a78c9;background:#d4f0e0">'+(Math.round(gtVal/1000)>0?Math.round(gtVal/1000).toLocaleString('id-ID'):'-')+'</td></tr>';
@@ -1462,15 +1491,18 @@ function renderOpenSheet() {
   var totGTPrice=totGTVol>0?totGTVal/totGTVol:0;
 
   document.getElementById('openTfoot').innerHTML=
-    '<tr style="background:#0d1f35"><td style="color:#7ec8f0;font-weight:700;font-size:11px;padding:6px 10px;white-space:nowrap">Total&nbsp;<span style="font-weight:400;font-size:10px;color:#b8d8f4">Volume (mt)</span></td>'+
+    '<tr style="background:#0d1f35"><td style="color:#7ec8f0;font-weight:700;font-size:11px;padding:6px 10px">Total</td>'+
+    '<td style="color:#b8d8f4;font-size:10px;padding:6px 8px;white-space:nowrap">Volume (mt)</td>'+
     '<td class="n" style="color:#ef9a9a;font-weight:700;font-size:11px;padding:6px 8px;border-right:1px solid #234">'+(Math.round(totBkVol)>0?Math.round(totBkVol).toLocaleString('id-ID'):'-')+'</td>'+
     dispMonths.map(function(m){var v=Math.round(totMoVol[m]||0);return'<td class="n" style="color:#7ec8f0;font-weight:700;font-size:11px;padding:5px 6px;border-right:1px solid #234">'+(v>0?v.toLocaleString('id-ID'):'-')+'</td>';}).join('')+
     '<td class="n" style="color:#fff;font-weight:700;font-size:11px;padding:6px 8px;border-left:2px solid #3a78c9">'+(Math.round(totGTVol)>0?Math.round(totGTVol).toLocaleString('id-ID'):'-')+'</td></tr>'+
-    '<tr style="background:#0d1f35"><td style="color:#b8d8f4;font-size:10px;padding:4px 10px;white-space:nowrap">Price (USD/MT)</td>'+
+    '<tr style="background:#0d1f35"><td></td>'+
+    '<td style="color:#b8d8f4;font-size:10px;padding:4px 8px;white-space:nowrap">Price (USD/MT)</td>'+
     '<td class="n" style="color:#b8d8f4;font-size:11px;padding:4px 8px;border-right:1px solid #234">'+(totBkPrice>0?totBkPrice.toFixed(2):'-')+'</td>'+
     dispMonths.map(function(m){var v=totMoVol[m]>0?(totMoVal[m]||0)/totMoVol[m]:0;return'<td class="n" style="color:#b8d8f4;font-size:11px;padding:4px 6px;border-right:1px solid #234">'+(v>0?v.toFixed(2):'-')+'</td>';}).join('')+
     '<td class="n" style="color:#b8d880;font-weight:700;font-size:11px;padding:4px 8px;border-left:2px solid #3a78c9">'+(totGTPrice>0?totGTPrice.toFixed(2):'-')+'</td></tr>'+
-    '<tr style="background:#0d1f35"><td style="color:#b8d880;font-size:10px;padding:4px 10px;white-space:nowrap">Value (K USD)</td>'+
+    '<tr style="background:#0d1f35"><td></td>'+
+    '<td style="color:#b8d880;font-size:10px;padding:4px 8px;white-space:nowrap">Value (K USD)</td>'+
     '<td class="n" style="color:#ef9a9a;font-size:11px;padding:4px 8px;border-right:1px solid #234">'+(Math.round(totBkVal/1000)>0?Math.round(totBkVal/1000).toLocaleString('id-ID'):'-')+'</td>'+
     dispMonths.map(function(m){var vv=Math.round((totMoVol[m]||0)*(totMoVol[m]>0?(totMoVal[m]||0)/totMoVol[m]:0)/1000);return'<td class="n" style="color:#b8d880;font-size:11px;padding:4px 6px;border-right:1px solid #234">'+(vv>0?vv.toLocaleString('id-ID'):'-')+'</td>';}).join('')+
     '<td class="n" style="color:#b8d880;font-weight:700;font-size:11px;padding:4px 8px;border-left:2px solid #3a78c9">'+(Math.round(totGTVal/1000)>0?Math.round(totGTVal/1000).toLocaleString('id-ID'):'-')+'</td></tr>';
@@ -1660,9 +1692,9 @@ function doExport() {
 
   var wsOpen=wb2.addWorksheet('Open');
   wsOpen.columns=openCols.map(function(c,i){
-    if(i===0)return{width:18};
-    if(i===1)return{width:12};
+    if(i===0)return{width:22};
     if(c==='Grand Total')return{width:14};
+    if(c==='Backlog')return{width:12};
     return{width:10};
   });
 
@@ -1707,7 +1739,7 @@ function doExport() {
     openDataRowStart+=3;
 
     // ── VOLUME row ──
-    var volRowData=[prod.replace(/_/g,' '),
+    var volRowData=[prod.replace(/_/g,' ')+'\nVolume (mt)',
       {formula:'SUMIF('+sn2+'!$A:$A,"USD",'+sn2+'!$'+bkQtyCol+':$'+bkQtyCol+')'}
     ];
     futureMonths.forEach(function(m){
@@ -1722,10 +1754,10 @@ function doExport() {
     volRowData.push({formula:bkCell+(moSum?'+'+moSum:'')});
 
     var exRow1=wsOpen.addRow(volRowData);
-    exRow1.height=16;
+    exRow1.height=30;
     exRow1.eachCell({includeEmpty:true},function(cell,cn){
       var ci=cn-1;
-      if(ci===0){cell.fill=hFill(pc.bg);cell.font={bold:true,color:{argb:'FF'+pc.txt},size:11};cell.alignment={vertical:'middle',horizontal:'left'};}
+      if(ci===0){cell.fill=hFill(pc.bg);cell.font={bold:true,color:{argb:'FF'+pc.txt},size:10};cell.alignment={vertical:'middle',horizontal:'left',wrapText:true};}
       else if(ci===1){cell.fill=hFill('FDE8E6');cell.font={bold:true,color:{argb:'FFB83228'},size:10};cell.alignment={horizontal:'right',vertical:'middle'};if(cell.value&&cell.value.formula)cell.numFmt='#,##0';}
       else if(ci===oGTIdx){cell.fill=hFill('CCE4F8');cell.font={bold:true,size:10};cell.alignment={horizontal:'right',vertical:'middle'};if(cell.value&&cell.value.formula)cell.numFmt='#,##0';}
       else{cell.fill=hFill('FFFFFF');cell.font={size:10};cell.alignment={horizontal:'right',vertical:'middle'};if(cell.value&&cell.value.formula)cell.numFmt='#,##0';}
@@ -1735,7 +1767,7 @@ function doExport() {
     // ── PRICE row ──
     // Backlog price = SUMPRODUCT((A="USD")*N*G) / SUMIF(A,"USD",N)
     var bkVolCell=openColLetter(1)+r1;
-    var priceRowData=[null,
+    var priceRowData=['Price (USD/MT)',
       {formula:'IFERROR(SUMPRODUCT(('+sn2+'!$A$3:$A$1000="USD")*'+sn2+'!$'+bkQtyCol+'$3:$'+bkQtyCol+'$1000*'+sn2+'!$'+exwUSDCol+'$3:$'+exwUSDCol+'$1000)/'+bkVolCell+',0)'}
     ];
     futureMonths.forEach(function(m,i){
@@ -1755,14 +1787,14 @@ function doExport() {
     exRow2.height=16;
     exRow2.eachCell({includeEmpty:true},function(cell,cn){
       var ci=cn-1;
-      if(ci===0){cell.fill=hFill(pc.bg);cell.font={bold:true,color:{argb:'FF'+pc.txt},size:11};cell.alignment={vertical:'middle',horizontal:'left'};}
+      if(ci===0){cell.fill=hFill(pc.bg);cell.font={italic:true,color:{argb:'FF'+pc.txt},size:9};cell.alignment={vertical:'middle',horizontal:'left'};}
       else if(ci===oGTIdx){cell.fill=hFill('CCE4F8');cell.font={size:10};cell.alignment={horizontal:'right',vertical:'middle'};if(cell.value&&cell.value.formula)cell.numFmt='#,##0.00';}
       else{cell.fill=hFill('FAFAFA');cell.font={size:10,color:{argb:'FF6B7280'}};cell.alignment={horizontal:'right',vertical:'middle'};if(cell.value&&cell.value.formula)cell.numFmt='#,##0.00';}
       cell.border={bottom:{style:'thin',color:{argb:'FFDDDDDD'}},right:{style:'thin',color:{argb:'FFDDDDDD'}}};
     });
 
     // ── VALUE row = Vol * Price / 1000 ──
-    var valRowData=[null,{formula:'IFERROR('+openColLetter(1)+r1+'*'+openColLetter(1)+r2+'/1000,"")'}];
+    var valRowData=['Value (K USD)',{formula:'IFERROR('+openColLetter(1)+r1+'*'+openColLetter(1)+r2+'/1000,"")'}];
     futureMonths.forEach(function(m,i){
       var vc=openColLetter(oMoStart+i)+r1, pc2=openColLetter(oMoStart+i)+r2;
       valRowData.push({formula:'IFERROR('+vc+'*'+pc2+'/1000,"")'});
@@ -1773,19 +1805,19 @@ function doExport() {
     exRow3.height=16;
     exRow3.eachCell({includeEmpty:true},function(cell,cn){
       var ci=cn-1;
-      if(ci===0){cell.fill=hFill(pc.bg);cell.font={bold:true,color:{argb:'FF'+pc.txt},size:11};cell.alignment={vertical:'middle',horizontal:'left'};}
+      if(ci===0){cell.fill=hFill(pc.bg);cell.font={bold:true,italic:true,color:{argb:'FF'+pc.txt},size:9};cell.alignment={vertical:'middle',horizontal:'left'};}
       else if(ci===1){cell.fill=hFill('FDE8E6');cell.font={bold:true,size:10,color:{argb:'FF92400E'}};cell.alignment={horizontal:'right',vertical:'middle'};if(cell.value&&cell.value.formula)cell.numFmt='#,##0';}
       else if(ci===oGTIdx){cell.fill=hFill('D4F0E0');cell.font={bold:true,size:10,color:{argb:'FF166534'}};cell.alignment={horizontal:'right',vertical:'middle'};if(cell.value&&cell.value.formula)cell.numFmt='#,##0';}
       else{cell.fill=hFill('FDFBF0');cell.font={size:10,color:{argb:'FF92400E'}};cell.alignment={horizontal:'right',vertical:'middle'};if(cell.value&&cell.value.formula)cell.numFmt='#,##0';}
       cell.border={bottom:{style:(pi===openProds.length-1?'medium':'thin'),color:{argb:pi===openProds.length-1?'FF9FC3E0':'FFDDDDDD'}},right:{style:'thin',color:{argb:'FFDDDDDD'}}};
     });
 
-    try{ wsOpen.mergeCells(r1,1,r3,1); }catch(e){}
+    // No merge - each row has its own label in col A
   });
 
   // ── TOTAL rows (Volume + Price + Value) ──
   var lastDataRow2=openDataRowStart-1;
-  var totVolRow2=['Total',
+  var totVolRow2=['Total\nVolume (mt)',
     {formula:openProds.map(function(p){
       var sn2=prodShort(p).replace(/[^a-zA-Z0-9]/g,'_').slice(0,31);
       return 'SUMIF('+sn2+'!$A:$A,"USD",'+sn2+'!$'+bkQtyCol+':$'+bkQtyCol+')';
@@ -1812,7 +1844,7 @@ function doExport() {
   });
 
   // Total PRICE row — SUMPRODUCT of all product vol*price / total vol per column
-  var totPriceRow2=[null];
+  var totPriceRow2=['Price (USD/MT)'];
   // Backlog price = sum(all prod SUMPRODUCT(N*G)) / total backlog vol
   var bkNumParts=openProds.map(function(p){
     var sn2=prodShort(p).replace(/[^a-zA-Z0-9]/g,'_').slice(0,31);
@@ -1849,7 +1881,7 @@ function doExport() {
   });
 
   // Total VALUE row = Vol * Price / 1000
-  var totValRow2=[null,{formula:'IFERROR('+openColLetter(1)+totVRow+'*'+openColLetter(1)+tPriceRowNum+'/1000,"")'}];
+  var totValRow2=['Value (K USD)',{formula:'IFERROR('+openColLetter(1)+totVRow+'*'+openColLetter(1)+tPriceRowNum+'/1000,"")'}];
   futureMonths.forEach(function(m,i){
     var vc=openColLetter(oMoStart+i)+totVRow, pc3=openColLetter(oMoStart+i)+tPriceRowNum;
     totValRow2.push({formula:'IFERROR('+vc+'*'+pc3+'/1000,"")'});
