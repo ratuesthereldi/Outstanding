@@ -902,12 +902,12 @@ function renderTable(data) {
   curNum=mN(curStr);
   var sep='border-left:3px solid #3a78c9';
 
-  // ── STEP 1: Build month range Jan-25 to Dec-26 + any extra from data ──
+  // ── STEP 1: Build month range Jan-25 to Dec-27 + any extra from data ──
   var monthSet={};
-  // Hardcode Jan-25 through Dec-26
+  // Hardcode Jan-25 through Dec-27
   var ms2=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  [25,26].forEach(function(yr){ms2.forEach(function(m){var k=m+'-'+yr;monthSet[k]=mN(k);});});
-  // Also add any months from actual data beyond Dec-26
+  [25,26,27].forEach(function(yr){ms2.forEach(function(m){var k=m+'-'+yr;monthSet[k]=mN(k);});});
+  // Also add any months from actual data beyond Dec-27
   function addMonth(val){var ml=parseDPMonth(val);if(ml)monthSet[ml]=mN(ml);}
   data.forEach(function(row){addMonth(g(row,K.dpMonth));});
   getIDR1Rows().forEach(function(row){addMonth(g(row,KI.dpMonth));});
@@ -1312,7 +1312,7 @@ function loadDemo() {
 function getOpenMonths() {
   var monthSet={};
   var ms2=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  [25,26].forEach(function(yr){ms2.forEach(function(m){var k=m+'-'+yr;monthSet[k]=mN(k);});});
+  [25,26,27].forEach(function(yr){ms2.forEach(function(m){var k=m+'-'+yr;monthSet[k]=mN(k);});});
   allRaw.forEach(function(row){var ml=parseDPMonth(g(row,K.dpMonth));if(ml)monthSet[ml]=mN(ml);});
   idrRaw.forEach(function(row){var ml=parseDPMonth(g(row,KI.dpMonth));if(ml)monthSet[ml]=mN(ml);});
   return Object.keys(monthSet).sort(function(a,b){return monthSet[a]-monthSet[b];});
@@ -1511,7 +1511,7 @@ function renderOpenSheet() {
 function doExport() {
   var ms2 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var fixedMo = [];
-  [25,26].forEach(function(yr){ ms2.forEach(function(m){ fixedMo.push(m+'-'+yr); }); });
+  [25,26,27].forEach(function(yr){ ms2.forEach(function(m){ fixedMo.push(m+'-'+yr); }); });
   var now2 = new Date();
   var curS2 = now2.toLocaleString('en-US',{month:'short'})+'-'+String(now2.getFullYear()).slice(-2);
   var pastM = fixedMo.filter(function(m){ return mN(m)<mN(curS2); });
@@ -1740,18 +1740,18 @@ function doExport() {
 
     // ── VOLUME row ──
     var volRowData=[prod.replace(/_/g,' ')+'\nVolume (mt)',
-      {formula:'SUMIF('+sn2+'!$A:$A,"USD",'+sn2+'!$'+bkQtyCol+':$'+bkQtyCol+')'}
+      {formula:'IFERROR(SUMIF('+sn2+'!$A:$A,"USD",'+sn2+'!$'+bkQtyCol+':$'+bkQtyCol+'),0)'}
     ];
     futureMonths.forEach(function(m){
       var moIdx=fixedMo.indexOf(m);
       if(moIdx<0){volRowData.push(null);return;}
       var moCol=prodColLetter(qtyStart+moIdx);
-      volRowData.push({formula:'SUMIF('+sn2+'!$A:$A,"USD",'+sn2+'!$'+moCol+':$'+moCol+')'});
+      volRowData.push({formula:'IFERROR(SUMIF('+sn2+'!$A:$A,"USD",'+sn2+'!$'+moCol+':$'+moCol+'),0)'});
     });
     // Grand Total = Backlog + all months
     var bkCell=openColLetter(1)+r1;
     var moSum=futureMonths.map(function(m,i){return openColLetter(oMoStart+i)+r1;}).join('+');
-    volRowData.push({formula:bkCell+(moSum?'+'+moSum:'')});
+    volRowData.push({formula:'IFERROR('+bkCell+(moSum?'+'+moSum:'')+',0)'});
 
     var exRow1=wsOpen.addRow(volRowData);
     exRow1.height=30;
@@ -1820,18 +1820,18 @@ function doExport() {
   var totVolRow2=['Total\nVolume (mt)',
     {formula:openProds.map(function(p){
       var sn2=prodShort(p).replace(/[^a-zA-Z0-9]/g,'_').slice(0,31);
-      return 'SUMIF('+sn2+'!$A:$A,"USD",'+sn2+'!$'+bkQtyCol+':$'+bkQtyCol+')';
+      return 'IFERROR(SUMIF('+sn2+'!$A:$A,"USD",'+sn2+'!$'+bkQtyCol+':$'+bkQtyCol+'),0)';
     }).join('+')}
   ];
   futureMonths.forEach(function(m,i){
     var col=openColLetter(oMoStart+i);
     var cells=[];
     for(var rr=2;rr<=lastDataRow2;rr+=3) cells.push(col+rr);
-    totVolRow2.push(cells.length?{formula:cells.join('+')}:null);
+    totVolRow2.push(cells.length?{formula:'IFERROR('+cells.join('+')+',0)'}:null);
   });
   var tBk=openColLetter(1)+(lastDataRow2+1);
   var tMoSum=futureMonths.map(function(m,i){return openColLetter(oMoStart+i)+(lastDataRow2+1);}).join('+');
-  totVolRow2.push({formula:tBk+(tMoSum?'+'+tMoSum:'')});
+  totVolRow2.push({formula:'IFERROR('+tBk+(tMoSum?'+'+tMoSum:'')+',0)'});
 
   var tVolRow=wsOpen.addRow(totVolRow2);
   var totVRow=lastDataRow2+1; // 1-based row number of this Volume total row
